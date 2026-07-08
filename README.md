@@ -306,9 +306,20 @@ Ports utiles:
 | DGES X-Road consumer HTTP | `8183` |
 | Health Security Servers | `5580`, `5581`, `5582`, `5583` |
 
-Cette stack demarre les vrais conteneurs, mais elle n'auto-configure pas encore l'ecosysteme X-Road. C'est volontaire: un Security Server officiel est inutilisable tant que l'ecosysteme n'a pas ete initialise.
+Cette stack demarre les vrais conteneurs X-Road. Pour que le test marche vraiment, les Security Servers doivent aussi etre enregistres cote Central Server, avoir leurs certificats et exposer les services REST avec les ACL attendues. Le script complet fait ce setup de bout en bout:
 
-Checklist d'initialisation X-Road officielle:
+```powershell
+.\scripts\bootstrap-xroad-official-full.ps1
+```
+
+Equivalent Linux/macOS:
+
+```bash
+chmod +x scripts/bootstrap-xroad-official-full.sh
+./scripts/bootstrap-xroad-official-full.sh
+```
+
+Le script complet:
 
 1. Initialiser le Central Server.
 2. Creer l'instance X-Road `BJ`.
@@ -327,9 +338,9 @@ Checklist d'initialisation X-Road officielle:
 7. Generer les certificats de signature et d'authentification.
 8. Faire approuver les certificats et les registrations cote Central Server.
 9. Publier les services REST:
-   - ANIP: backend `https://system-b-anip:3001`, service code `anip`
-   - Justice: backend `https://system-c-justice:3002`, service code `justice`
-   - DGES: backend `https://system-d-dges:3003`, service code `dges`
+   - ANIP: backend `http://system-b-anip:3001`, service code `anip`
+   - Justice: backend `http://system-c-justice:3002`, service code `justice`
+   - DGES: backend `http://system-d-dges:3003`, service code `dges`
 10. Configurer les droits d'acces:
    - `PORTAL/CONCOURS` -> `ANIP/REGISTRY/anip`
    - `PORTAL/CONCOURS` -> `JUSTICE/CASIER/justice`
@@ -357,6 +368,6 @@ chmod +x scripts/bootstrap-xroad-official-anchor.sh
 
 Le script initialise le Central Server de lab, cree ou reactive les droits API necessaires, cree les cles de signature des configurations `INTERNAL` et `EXTERNAL`, telecharge l'ancre de configuration interne et la copie dans les Security Servers. Il corrige les symptomes vus dans les logs: `ANCHOR_FILE_NOT_FOUND`, `GlobalConf ... is empty` et `Signing of external configuration failed - active key missing`.
 
-La page Central Server `Security Servers` reste vide tant que les Security Servers n'ont pas ete enregistres comme serveurs X-Road rattaches aux membres `PORTAL`, `ANIP`, `JUSTICE` et `DGES`. Le bootstrap d'ancre ne fait pas encore cette registration; il prepare seulement la configuration globale necessaire pour que les noeuds puissent ensuite etre initialises et enregistres proprement.
+Ce script d'ancre seul ne suffit pas pour faire passer un appel X-Road applicatif: il prepare la configuration globale, mais ne publie pas les Security Servers, les clients, les certificats et les services. Pour un test complet, utiliser `bootstrap-xroad-official-full.ps1`.
 
 Pour un demo rapide et reproductible sans configuration X-Road manuelle, utiliser `docker-compose.xroad-sim.yml`. Pour valider les vrais ecrans, certificats, registrations, ACL et logs X-Road, utiliser `docker-compose.xroad-official.yml`.

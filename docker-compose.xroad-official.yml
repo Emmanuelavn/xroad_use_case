@@ -28,6 +28,7 @@ services:
     environment:
       PORT: 3001
       TRUST_XROAD: "true"
+      HTTP_ONLY: "true"
       XROAD_BASE_URL: ${ANIP_XROAD_BASE_URL:-http://xroad-anip-ss:8080}
       XROAD_CLIENT: BJ/GOV/ANIP/REGISTRY
       LOG_HOST: system-a-portal
@@ -38,6 +39,7 @@ services:
     environment:
       PORT: 3002
       TRUST_XROAD: "true"
+      HTTP_ONLY: "true"
       LOG_HOST: system-a-portal
       LOG_PORT: 3000
 
@@ -46,6 +48,7 @@ services:
     environment:
       PORT: 3003
       TRUST_XROAD: "true"
+      HTTP_ONLY: "true"
       LOG_HOST: system-a-portal
       LOG_PORT: 3000
 

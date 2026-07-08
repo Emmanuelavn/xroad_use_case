@@ -14,6 +14,7 @@ const CERTS_DIR = path.join(__dirname, 'certs');
 const LOG_HOST = process.env.LOG_HOST || 'localhost';
 const LOG_PORT = Number(process.env.LOG_PORT || 3000);
 const TRUST_XROAD = process.env.TRUST_XROAD === 'true';
+const HTTP_ONLY = process.env.HTTP_ONLY === 'true';
 const XROAD_BASE_URL = process.env.XROAD_BASE_URL;
 const XROAD_CLIENT = process.env.XROAD_CLIENT || 'BJ/GOV/ANIP/REGISTRY';
 
@@ -199,14 +200,20 @@ app.delete('/api/v1/personnes/:npi', (req, res) => { if(!personnes[req.params.np
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'admin.html')); });
 app.get('/', (req, res) => { res.redirect('/admin'); });
 
-const httpsServer = https.createServer({
-  cert: serverCert, key: serverKey, ca: caCert,
-  requestCert: true, rejectUnauthorized: false
-}, app);
+if (HTTP_ONLY) {
+  http.createServer(app).listen(PORT, () => {
+    console.log(`[ANIP] HTTP Port ${PORT} — backend interne X-Road`);
+  });
+} else {
+  const httpsServer = https.createServer({
+    cert: serverCert, key: serverKey, ca: caCert,
+    requestCert: true, rejectUnauthorized: false
+  }, app);
 
-httpsServer.listen(PORT, () => {
-  console.log(`[ANIP] HTTPS Port ${PORT} — Admin: https://localhost:${PORT}`);
-  console.log(`[ANIP] Certificat serveur: CN=ANIP-Registry`);
-  console.log(`[ANIP] Certificats clients acceptés: Portal-Concours`);
-  console.log(`[ANIP] Certificat client sortant: ANIP-Registry → Justice, DGES`);
-});
+  httpsServer.listen(PORT, () => {
+    console.log(`[ANIP] HTTPS Port ${PORT} — Admin: https://localhost:${PORT}`);
+    console.log(`[ANIP] Certificat serveur: CN=ANIP-Registry`);
+    console.log(`[ANIP] Certificats clients acceptés: Portal-Concours`);
+    console.log(`[ANIP] Certificat client sortant: ANIP-Registry -> Justice, DGES`);
+  });
+}

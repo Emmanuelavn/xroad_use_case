@@ -1,5 +1,6 @@
 const express = require('express');
 const https = require('https');
+const http = require('http');
 const path = require('path');
 const fs = require('fs');
 
@@ -13,6 +14,7 @@ const CERTS_DIR = path.join(__dirname, 'certs');
 const LOG_HOST = process.env.LOG_HOST || 'localhost';
 const LOG_PORT = Number(process.env.LOG_PORT || 3000);
 const TRUST_XROAD = process.env.TRUST_XROAD === 'true';
+const HTTP_ONLY = process.env.HTTP_ONLY === 'true';
 
 const serverCert = fs.readFileSync(path.join(CERTS_DIR, 'server-cert.pem'));
 const serverKey = fs.readFileSync(path.join(CERTS_DIR, 'server-key.pem'));
@@ -85,13 +87,19 @@ app.get('/api/v1/justice/casier/:npi', certAuth, (req, res) => {
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'admin.html')); });
 app.get('/', (req, res) => { res.redirect('/admin'); });
 
-const httpsServer = https.createServer({
-  cert: serverCert, key: serverKey, ca: caCert,
-  requestCert: true, rejectUnauthorized: false
-}, app);
+if (HTTP_ONLY) {
+  http.createServer(app).listen(PORT, () => {
+    console.log(`[Justice] HTTP Port ${PORT} — backend interne X-Road`);
+  });
+} else {
+  const httpsServer = https.createServer({
+    cert: serverCert, key: serverKey, ca: caCert,
+    requestCert: true, rejectUnauthorized: false
+  }, app);
 
-httpsServer.listen(PORT, () => {
-  console.log(`[Justice] HTTPS Port ${PORT} — Admin: https://localhost:${PORT}`);
-  console.log(`[Justice] Certificat serveur: CN=Justice-Casier`);
-  console.log(`[Justice] Certificats clients acceptés: Portal-Concours, ANIP-Registry`);
-});
+  httpsServer.listen(PORT, () => {
+    console.log(`[Justice] HTTPS Port ${PORT} — Admin: https://localhost:${PORT}`);
+    console.log(`[Justice] Certificat serveur: CN=Justice-Casier`);
+    console.log(`[Justice] Certificats clients acceptés: Portal-Concours, ANIP-Registry`);
+  });
+}

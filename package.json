@@ -13,6 +13,7 @@
     "compose:xroad": "docker compose -f docker-compose.xroad-sim.yml up --build",
     "compose:xroad:down": "docker compose -f docker-compose.xroad-sim.yml down",
     "compose:xroad:official": "docker compose -f docker-compose.xroad-official.yml up --build",
+    "bootstrap:xroad:official": "powershell -ExecutionPolicy Bypass -File scripts/bootstrap-xroad-official-full.ps1",
     "compose:xroad:official:down": "docker compose -f docker-compose.xroad-official.yml down"
   },
   "dependencies": {
