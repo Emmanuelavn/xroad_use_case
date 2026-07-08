@@ -44,13 +44,7 @@ function sendLog(direction, method, p, status, detail) {
 // Certificate auth — only for inter-system endpoint
 function certAuth(req, res, next) {
   if (TRUST_XROAD && req.header('X-Road-Client')) {
-    const allowedXroadClients = ['BJ/GOV/PORTAL/CONCOURS', 'BJ/GOV/ANIP/REGISTRY'];
-    const client = req.header('X-Road-Client');
-    if (!allowedXroadClients.includes(client)) {
-      sendLog('REJECT', req.method, req.path, 403, `X-Road client "${client}" non autorisé`);
-      return res.status(403).json({ error: `X-Road client non autorisé: ${client}`, code: 'XROAD_UNAUTHORIZED' });
-    }
-    req.clientCN = client;
+    req.clientCN = req.header('X-Road-Client');
     return next();
   }
   const cert = req.socket.getPeerCertificate();
