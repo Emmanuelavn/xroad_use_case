@@ -92,10 +92,18 @@ login_body=$(printf '{"password":"%s"}' "$CENTRAL_SERVER_TOKEN_PIN")
 central_curl "PUT" "/tokens/$token_id/login" "$login_body"
 echo
 
-echo "Creating configuration signing key if needed..."
-key_body=$(printf '{"token_id":"%s","key_label":"BJ-INTERNAL-CONFIG-SIGNING"}' "$token_id")
-central_curl "POST" "/configuration-sources/INTERNAL/signing-keys" "$key_body"
-echo
+for configuration_source in INTERNAL EXTERNAL; do
+  if printf '%s' "$tokens_json" | grep -Eq "\"active\":true[^}]*\"source_type\":\"$configuration_source\"|\"source_type\":\"$configuration_source\"[^}]*\"active\":true"; then
+    echo "$configuration_source configuration signing key already active"
+    continue
+  fi
+
+  echo "Creating $configuration_source configuration signing key..."
+  key_body=$(printf '{"token_id":"%s","key_label":"%s-%s-CONFIG-SIGNING"}' \
+    "$token_id" "$INSTANCE_IDENTIFIER" "$configuration_source")
+  central_curl "POST" "/configuration-sources/$configuration_source/signing-keys" "$key_body"
+  echo
+done
 
 echo "Re-creating and downloading internal configuration anchor..."
 central_curl "PUT" "/configuration-sources/INTERNAL/anchor/re-create"

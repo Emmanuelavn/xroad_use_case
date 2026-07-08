@@ -96,12 +96,23 @@ Write-Host "Logging in central token..."
 $loginBody = @{ password = $CentralServerTokenPin } | ConvertTo-Json -Compress
 CentralCurl "PUT" "/tokens/$tokenId/login" $loginBody | Write-Host
 
-Write-Host "Creating configuration signing key if needed..."
-$keyBody = @{
-  token_id = $tokenId
-  key_label = "BJ-INTERNAL-CONFIG-SIGNING"
-} | ConvertTo-Json -Compress
-CentralCurl "POST" "/configuration-sources/INTERNAL/signing-keys" $keyBody | Write-Host
+foreach ($configurationSource in @("INTERNAL", "EXTERNAL")) {
+  $activeSigningKey = @($tokens[0].configuration_signing_keys) | Where-Object {
+    $_.source_type -eq $configurationSource -and $_.active -eq $true
+  } | Select-Object -First 1
+
+  if ($activeSigningKey) {
+    Write-Host "$configurationSource configuration signing key already active: $($activeSigningKey.id)"
+    continue
+  }
+
+  Write-Host "Creating $configurationSource configuration signing key..."
+  $keyBody = @{
+    token_id = $tokenId
+    key_label = "$InstanceIdentifier-$configurationSource-CONFIG-SIGNING"
+  } | ConvertTo-Json -Compress
+  CentralCurl "POST" "/configuration-sources/$configurationSource/signing-keys" $keyBody | Write-Host
+}
 
 Write-Host "Re-creating and downloading internal configuration anchor..."
 CentralCurl "PUT" "/configuration-sources/INTERNAL/anchor/re-create" | Write-Host

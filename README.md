@@ -355,6 +355,8 @@ chmod +x scripts/bootstrap-xroad-official-anchor.sh
 ./scripts/bootstrap-xroad-official-anchor.sh
 ```
 
-Le script initialise le Central Server de lab, cree ou reactive les droits API necessaires, telecharge l'ancre de configuration interne et la copie dans les Security Servers. Il corrige le symptome vu dans les logs: `ANCHOR_FILE_NOT_FOUND` et `GlobalConf ... is empty`.
+Le script initialise le Central Server de lab, cree ou reactive les droits API necessaires, cree les cles de signature des configurations `INTERNAL` et `EXTERNAL`, telecharge l'ancre de configuration interne et la copie dans les Security Servers. Il corrige les symptomes vus dans les logs: `ANCHOR_FILE_NOT_FOUND`, `GlobalConf ... is empty` et `Signing of external configuration failed - active key missing`.
+
+La page Central Server `Security Servers` reste vide tant que les Security Servers n'ont pas ete enregistres comme serveurs X-Road rattaches aux membres `PORTAL`, `ANIP`, `JUSTICE` et `DGES`. Le bootstrap d'ancre ne fait pas encore cette registration; il prepare seulement la configuration globale necessaire pour que les noeuds puissent ensuite etre initialises et enregistres proprement.
 
 Pour un demo rapide et reproductible sans configuration X-Road manuelle, utiliser `docker-compose.xroad-sim.yml`. Pour valider les vrais ecrans, certificats, registrations, ACL et logs X-Road, utiliser `docker-compose.xroad-official.yml`.
