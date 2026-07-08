@@ -1,0 +1,18 @@
+{
+  "name": "mini-xroad-mvp",
+  "version": "1.0.0",
+  "description": "MVP Interopérabilité Mini X-Road — Réseau distribué de concours national",
+  "scripts": {
+    "install:all": "cd system-a-portal && npm install && cd ..\\system-b-anip && npm install && cd ..\\system-c-justice && npm install && cd ..\\system-d-dges && npm install",
+    "start:a": "cd system-a-portal && node server.js",
+    "start:b": "cd system-b-anip && node server.js",
+    "start:c": "cd system-c-justice && node server.js",
+    "start:d": "cd system-d-dges && node server.js",
+    "start:all": "node start-all.js",
+    "test": "node test-scenarios.js"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.61.1",
+    "selfsigned": "^5.5.0"
+  }
+}

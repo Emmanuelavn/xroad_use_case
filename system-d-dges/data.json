@@ -1,0 +1,79 @@
+{
+  "DIP-LIC-2024-001": {
+    "numero_diplome": "DIP-LIC-2024-001",
+    "npi_titulaire": "11111111111111",
+    "intitule_grade": "Licence",
+    "filiere": "Informatique",
+    "annee_obtention": 2024
+  },
+  "DIP-TEST-001": {
+    "numero_diplome": "DIP-TEST-001",
+    "npi_titulaire": "99999999999999",
+    "intitule_grade": "Licence",
+    "filiere": "Test",
+    "annee_obtention": 2026
+  },
+  "DIP-TEST-2026-999": {
+    "numero_diplome": "DIP-TEST-2026-999",
+    "npi_titulaire": "99999999999999",
+    "intitule_grade": "Master",
+    "filiere": "Test Filiere",
+    "annee_obtention": 2026
+  },
+  "DIP-TEST-1783477056866": {
+    "numero_diplome": "DIP-TEST-1783477056866",
+    "npi_titulaire": "11783477056866",
+    "intitule_grade": "Master",
+    "filiere": "Test Filiere",
+    "annee_obtention": 2026
+  },
+  "DIP-TEST-1783477203717": {
+    "numero_diplome": "DIP-TEST-1783477203717",
+    "npi_titulaire": "11783477203717",
+    "intitule_grade": "Master",
+    "filiere": "Test Filiere",
+    "annee_obtention": 2026
+  },
+  "DIP-TEST-1783477348922": {
+    "numero_diplome": "DIP-TEST-1783477348922",
+    "npi_titulaire": "11783477348922",
+    "intitule_grade": "Master",
+    "filiere": "Test Filiere",
+    "annee_obtention": 2026
+  },
+  "DIP-TEST-1783490008178": {
+    "numero_diplome": "DIP-TEST-1783490008178",
+    "npi_titulaire": "11783490008178",
+    "intitule_grade": "Master",
+    "filiere": "Test Filiere",
+    "annee_obtention": 2026
+  },
+  "DIP-LIC-2023-001": {
+    "numero_diplome": "DIP-LIC-2023-001",
+    "npi_titulaire": "22222222222222",
+    "intitule_grade": "Licence",
+    "filiere": "Sécurité Informatique",
+    "annee_obtention": 2023
+  },
+  "DIP-TEST-1783504221921": {
+    "numero_diplome": "DIP-TEST-1783504221921",
+    "npi_titulaire": "11783504221921",
+    "intitule_grade": "Master",
+    "filiere": "Test Filiere",
+    "annee_obtention": 2026
+  },
+  "DIP-TEST-1783505166944": {
+    "numero_diplome": "DIP-TEST-1783505166944",
+    "npi_titulaire": "11783505166944",
+    "intitule_grade": "Master",
+    "filiere": "Test Filiere",
+    "annee_obtention": 2026
+  },
+  "DIP-TEST-1783506432659": {
+    "numero_diplome": "DIP-TEST-1783506432659",
+    "npi_titulaire": "11783506432659",
+    "intitule_grade": "Master",
+    "filiere": "Test Filiere",
+    "annee_obtention": 2026
+  }
+}

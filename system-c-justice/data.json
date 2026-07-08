@@ -1,0 +1,62 @@
+{
+  "11111111111111": {
+    "npi": "11111111111111",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-2026-D04"
+  },
+  "99999999999999": {
+    "npi": "99999999999999",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-TEST-001"
+  },
+  "11783477052482": {
+    "npi": "11783477052482",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-1783477052482"
+  },
+  "11783477198155": {
+    "npi": "11783477198155",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-1783477198155"
+  },
+  "11783477344559": {
+    "npi": "11783477344559",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-1783477344559"
+  },
+  "11783490003760": {
+    "npi": "11783490003760",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-1783490003760"
+  },
+  "22222222222222": {
+    "npi": "22222222222222",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-2026-D04"
+  },
+  "11783504217384": {
+    "npi": "11783504217384",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-1783504217384"
+  },
+  "11783505162520": {
+    "npi": "11783505162520",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-1783505162520"
+  },
+  "11783506428198": {
+    "npi": "11783506428198",
+    "statut_casier": "VIERGE",
+    "motif_condamnation": null,
+    "reference_bulletin": "CJ-1783506428198"
+  }
+}

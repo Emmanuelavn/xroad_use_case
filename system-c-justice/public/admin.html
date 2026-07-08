@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administration — Justice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc; --bg-dark: #0f172a; --surface: #ffffff; --surface-alt: #f1f5f9;
+      --border: #e2e8f0; --border-dark: #1e293b;
+      --text: #0f172a; --text-secondary: #475569; --text-muted: #94a3b8;
+      --accent: #f59e0b; --accent-dark: #d97706; --accent-light: #fef3c7;
+      --green: #10b981; --green-light: #d1fae5; --green-dark: #059669;
+      --red: #ef4444; --red-light: #fee2e2; --red-dark: #dc2626;
+      --yellow: #f59e0b; --yellow-light: #fef3c7;
+      --purple: #8b5cf6; --purple-light: #ede9fe;
+      --sidebar-w: 240px; --header-h: 64px;
+      --radius: 12px; --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+    .sidebar { width: var(--sidebar-w); background: var(--bg-dark); color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; }
+    .sidebar-brand { padding: 20px 20px 16px; border-bottom: 1px solid var(--border-dark); }
+    .sidebar-brand h2 { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; color: var(--accent); }
+    .sidebar-brand p { font-size: 11px; color: #64748b; margin-top: 4px; line-height: 1.4; }
+    .sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+    .sidebar-nav button { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: none; border-radius: 8px; background: transparent; color: #94a3b8; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; transition: all 0.15s; text-align: left; width: 100%; }
+    .sidebar-nav button:hover { background: rgba(255,255,255,0.05); color: #e2e8f0; }
+    .sidebar-nav button.active { background: rgba(245,158,11,0.15); color: #fbbf24; font-weight: 600; }
+    .sidebar-nav button .nav-icon { width: 18px; height: 18px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+    .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border-dark); }
+    .sidebar-footer p { font-size: 10px; color: #475569; }
+
+    .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { height: var(--header-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; position: sticky; top: 0; z-index: 40; }
+    .topbar h1 { font-size: 16px; font-weight: 700; color: var(--text); }
+    .topbar-actions { display: flex; gap: 8px; }
+    .content { flex: 1; padding: 28px 32px; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+    .stat-card .stat-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .stat-value { font-size: 28px; font-weight: 800; margin-top: 6px; letter-spacing: -1px; }
+    .stat-card .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card-header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card-header h2 { font-size: 14px; font-weight: 700; }
+    .card-body { padding: 24px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .form-group input, .form-group select { padding: 10px 14px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; color: var(--text); outline: none; transition: border-color 0.15s; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .form-group input::placeholder { color: var(--text-muted); }
+
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-dark); box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
+    .btn-success { background: var(--green); color: #fff; }
+    .btn-success:hover { background: var(--green-dark); }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-danger:hover { background: var(--red-dark); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { text-align: left; padding: 10px 14px; background: var(--surface-alt); border-bottom: 2px solid var(--border); color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    .data-table tr:hover td { background: rgba(0,0,0,0.02); }
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .badge-green { background: var(--green-light); color: var(--green-dark); }
+    .badge-red { background: var(--red-light); color: var(--red-dark); }
+    .data-empty { color: var(--text-muted); text-align: center; padding: 32px; font-size: 13px; }
+    .actions { display: flex; gap: 6px; }
+
+    .msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 12px; display: none; }
+    .msg.ok { display: block; background: var(--green-light); border: 1px solid rgba(16,185,129,0.3); color: var(--green-dark); }
+    .msg.err { display: block; background: var(--red-light); border: 1px solid rgba(239,68,68,0.3); color: var(--red-dark); }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h2>Justice</h2>
+      <p>Administration du Casier Judiciaire</p>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="active" onclick="showPage('ajouter',this)">
+        <span class="nav-icon" style="background:rgba(16,185,129,0.15);color:var(--green)">+</span>
+        Ajouter
+      </button>
+      <button onclick="showPage('registre',this)">
+        <span class="nav-icon" style="background:rgba(245,158,11,0.15);color:var(--accent)">R</span>
+        Registre
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <p>Republique du Benin</p>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <h1 id="topbar-title">Ajouter un casier</h1>
+      <div class="topbar-actions">
+        <a href="https://localhost:3000" class="btn btn-outline btn-sm" target="_blank">Retour au Portail</a>
+      </div>
+    </header>
+
+    <div class="content">
+      <div id="page-ajouter" class="page active">
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-label">Casiers enregistres</div>
+            <div class="stat-value" id="stat-total" style="color:var(--accent)">0</div>
+            <div class="stat-sub">dans le registre</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Casiers vierges</div>
+            <div class="stat-value" id="stat-vierge" style="color:var(--green)">0</div>
+            <div class="stat-sub">aucune condamnation</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Casiers non vierges</div>
+            <div class="stat-value" id="stat-nonvierge" style="color:var(--red)">0</div>
+            <div class="stat-sub">avec condamnation</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Ajouter un casier</h2>
+          </div>
+          <div class="card-body">
+            <form id="addForm">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Numero Personnel d'Identification (NPI)</label>
+                  <input type="text" id="f-npi" maxlength="14" required placeholder="10000000000099">
+                </div>
+                <div class="form-group">
+                  <label>Statut du casier</label>
+                  <select id="f-statut"><option value="VIERGE">VIERGE</option><option value="NON_VIERGE">NON_VIERGE</option></select>
+                </div>
+                <div class="form-group">
+                  <label>Motif (si non vierge)</label>
+                  <input type="text" id="f-motif" placeholder="Facultatif">
+                </div>
+                <div class="form-group">
+                  <label>Reference du bulletin</label>
+                  <input type="text" id="f-ref" required placeholder="CJ-2026-D04">
+                </div>
+                <div class="form-group" style="justify-content:flex-end">
+                  <button type="submit" class="btn btn-success" style="width:100%">Ajouter</button>
+                </div>
+              </div>
+            </form>
+            <div id="addMsg" class="msg"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-registre" class="page">
+        <div class="card">
+          <div class="card-header">
+            <h2>Registre des casiers</h2>
+            <button class="btn btn-outline btn-sm" onclick="load()">Rafraichir</button>
+          </div>
+          <div class="card-body" style="overflow-x:auto">
+            <div id="table-container"></div>
+          </div>
+        </div>
+
+        <div class="card" id="edit-card" style="display:none">
+          <div class="card-header">
+            <h2>Modifier un casier</h2>
+          </div>
+          <div class="card-body">
+            <form id="editForm">
+              <input type="hidden" id="e-npi">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>NPI</label>
+                  <input type="text" id="e-npi-display" disabled>
+                </div>
+                <div class="form-group">
+                  <label>Statut</label>
+                  <select id="e-statut"><option value="VIERGE">VIERGE</option><option value="NON_VIERGE">NON_VIERGE</option></select>
+                </div>
+                <div class="form-group">
+                  <label>Motif</label>
+                  <input type="text" id="e-motif">
+                </div>
+                <div class="form-group">
+                  <label>Reference bulletin</label>
+                  <input type="text" id="e-ref">
+                </div>
+                <div class="form-group" style="justify-content:flex-end;gap:8px;display:flex;flex-direction:row">
+                  <button type="submit" class="btn btn-primary">Enregistrer</button>
+                  <button type="button" class="btn btn-outline" onclick="cancelEdit()">Annuler</button>
+                </div>
+              </div>
+            </form>
+            <div id="editMsg" class="msg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api/v1/casiers';
+    const headers = { 'Content-Type': 'application/json' };
+
+    function showPage(name, el) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.sidebar-nav button').forEach(b => b.classList.remove('active'));
+      document.getElementById('page-' + name).classList.add('active');
+      if (el) el.classList.add('active');
+      const titles = { ajouter: 'Ajouter un casier', registre: 'Registre des casiers' };
+      document.getElementById('topbar-title').textContent = titles[name] || name;
+      if (name === 'registre') load();
+    }
+
+    async function load() {
+      const resp = await fetch(API);
+      const data = await resp.json();
+      document.getElementById('stat-total').textContent = data.length;
+      document.getElementById('stat-vierge').textContent = data.filter(c => c.statut_casier === 'VIERGE').length;
+      document.getElementById('stat-nonvierge').textContent = data.filter(c => c.statut_casier !== 'VIERGE').length;
+      let html = '<table class="data-table"><thead><tr><th>NPI</th><th>Statut</th><th>Motif</th><th>Reference</th><th>Actions</th></tr></thead><tbody>';
+      data.forEach(c => {
+        const badge = c.statut_casier === 'VIERGE' ? 'badge-green' : 'badge-red';
+        html += '<tr><td style="font-family:monospace">' + c.npi + '</td><td><span class="badge ' + badge + '">' + c.statut_casier + '</span></td><td>' + (c.motif_condamnation || '---') + '</td><td style="font-family:monospace">' + c.reference_bulletin + '</td><td class="actions"><button class="btn btn-primary btn-sm" onclick="edit(\'' + c.npi + '\',\'' + c.statut_casier + '\',\'' + (c.motif_condamnation || '').replace(/'/g, "\\'") + '\',\'' + c.reference_bulletin + '\')">Modifier</button><button class="btn btn-danger btn-sm" onclick="del(\'' + c.npi + '\')">Supprimer</button></td></tr>';
+      });
+      html += '</tbody></table>';
+      document.getElementById('table-container').innerHTML = html || '<div class="data-empty">Aucune donnee</div>';
+    }
+
+    document.getElementById('addForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('addMsg');
+      const resp = await fetch(API, { method: 'POST', headers, body: JSON.stringify({ npi: document.getElementById('f-npi').value, statut_casier: document.getElementById('f-statut').value, motif_condamnation: document.getElementById('f-motif').value || null, reference_bulletin: document.getElementById('f-ref').value }) });
+      const data = await resp.json();
+      if (resp.ok) { msg.className = 'msg ok'; msg.textContent = 'Casier ajoute avec succes'; e.target.reset(); }
+      else { msg.className = 'msg err'; msg.textContent = data.error; }
+      setTimeout(() => msg.className = 'msg', 3000);
+    });
+
+    function edit(npi, statut, motif, ref) {
+      document.getElementById('edit-card').style.display = 'block';
+      document.getElementById('e-npi').value = npi;
+      document.getElementById('e-npi-display').value = npi;
+      document.getElementById('e-statut').value = statut;
+      document.getElementById('e-motif').value = motif;
+      document.getElementById('e-ref').value = ref;
+      document.getElementById('edit-card').scrollIntoView({ behavior: 'smooth' });
+      showPage('registre', document.querySelectorAll('.sidebar-nav button')[1]);
+    }
+    function cancelEdit() { document.getElementById('edit-card').style.display = 'none'; }
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const npi = document.getElementById('e-npi').value;
+      const msg = document.getElementById('editMsg');
+      const resp = await fetch(API + '/' + npi, { method: 'PUT', headers, body: JSON.stringify({ statut_casier: document.getElementById('e-statut').value, motif_condamnation: document.getElementById('e-motif').value || null, reference_bulletin: document.getElementById('e-ref').value }) });
+      if (resp.ok) { msg.className = 'msg ok'; msg.textContent = 'Modifie avec succes'; cancelEdit(); load(); }
+      else { const d = await resp.json(); msg.className = 'msg err'; msg.textContent = d.error; }
+      setTimeout(() => msg.className = 'msg', 3000);
+    });
+
+    async function del(npi) {
+      if (!confirm('Supprimer le casier NPI ' + npi + ' ?')) return;
+      await fetch(API + '/' + npi, { method: 'DELETE' });
+      load();
+    }
+
+    load();
+  </script>
+</body>
+</html>
