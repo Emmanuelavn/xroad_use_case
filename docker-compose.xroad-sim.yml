@@ -1,0 +1,76 @@
+services:
+  system-a-portal:
+    build: ./system-a-portal
+    environment:
+      PORT: 3000
+      XROAD_BASE_URL: http://xroad-portal:8080
+      XROAD_CLIENT: BJ/GOV/PORTAL/CONCOURS
+    ports:
+      - "3000:3000"
+
+  system-b-anip:
+    build: ./system-b-anip
+    environment:
+      PORT: 3001
+      TRUST_XROAD: "true"
+      XROAD_BASE_URL: http://xroad-anip:8080
+      XROAD_CLIENT: BJ/GOV/ANIP/REGISTRY
+      LOG_HOST: system-a-portal
+      LOG_PORT: 3000
+    depends_on:
+      - system-a-portal
+
+  system-c-justice:
+    build: ./system-c-justice
+    environment:
+      PORT: 3002
+      TRUST_XROAD: "true"
+      LOG_HOST: system-a-portal
+      LOG_PORT: 3000
+    depends_on:
+      - system-a-portal
+
+  system-d-dges:
+    build: ./system-d-dges
+    environment:
+      PORT: 3003
+      TRUST_XROAD: "true"
+      LOG_HOST: system-a-portal
+      LOG_PORT: 3000
+    depends_on:
+      - system-a-portal
+
+  xroad-portal:
+    build: ./xroad-proxy
+    environment:
+      LOCAL_MEMBER: BJ/GOV/PORTAL/CONCOURS
+    ports:
+      - "8080:8080"
+    depends_on:
+      - system-a-portal
+      - xroad-anip
+      - xroad-justice
+      - xroad-dges
+
+  xroad-anip:
+    build: ./xroad-proxy
+    environment:
+      LOCAL_MEMBER: BJ/GOV/ANIP/REGISTRY
+    depends_on:
+      - system-b-anip
+      - xroad-justice
+      - xroad-dges
+
+  xroad-justice:
+    build: ./xroad-proxy
+    environment:
+      LOCAL_MEMBER: BJ/GOV/JUSTICE/CASIER
+    depends_on:
+      - system-c-justice
+
+  xroad-dges:
+    build: ./xroad-proxy
+    environment:
+      LOCAL_MEMBER: BJ/GOV/DGES/DIPLOMES
+    depends_on:
+      - system-d-dges

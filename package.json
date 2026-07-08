@@ -9,7 +9,11 @@
     "start:c": "cd system-c-justice && node server.js",
     "start:d": "cd system-d-dges && node server.js",
     "start:all": "node start-all.js",
-    "test": "node test-scenarios.js"
+    "test": "node test-scenarios.js",
+    "compose:xroad": "docker compose -f docker-compose.xroad-sim.yml up --build",
+    "compose:xroad:down": "docker compose -f docker-compose.xroad-sim.yml down",
+    "compose:xroad:official": "docker compose -f docker-compose.xroad-official.yml up --build",
+    "compose:xroad:official:down": "docker compose -f docker-compose.xroad-official.yml down"
   },
   "dependencies": {
     "@playwright/test": "^1.61.1",

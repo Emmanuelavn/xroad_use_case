@@ -7,9 +7,12 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PORT = 3003;
+const PORT = Number(process.env.PORT || 3003);
 const DB_FILE = path.join(__dirname, 'data.json');
 const CERTS_DIR = path.join(__dirname, 'certs');
+const LOG_HOST = process.env.LOG_HOST || 'localhost';
+const LOG_PORT = Number(process.env.LOG_PORT || 3000);
+const TRUST_XROAD = process.env.TRUST_XROAD === 'true';
 
 const serverCert = fs.readFileSync(path.join(CERTS_DIR, 'server-cert.pem'));
 const serverKey = fs.readFileSync(path.join(CERTS_DIR, 'server-key.pem'));
@@ -29,13 +32,23 @@ function save() { fs.writeFileSync(DB_FILE, JSON.stringify(diplomes, null, 2)); 
 function sendLog(direction, method, p, status, detail) {
   const data = JSON.stringify({ source: 'D-DGES', direction, method, path: p, status, detail, time: new Date().toISOString() });
   try {
-    const req = https.request({ hostname: 'localhost', port: 3000, path: '/api/logs/push', method: 'POST', ca: caCert, rejectUnauthorized: false, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => { res.resume(); });
+    const req = https.request({ hostname: LOG_HOST, port: LOG_PORT, path: '/api/logs/push', method: 'POST', ca: caCert, rejectUnauthorized: false, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => { res.resume(); });
     req.on('error', (e) => { console.error(`[DGES] sendLog ERROR: ${e.message}`); }); req.write(data); req.end();
   } catch(e) { console.error(`[DGES] sendLog EXCEPTION: ${e.message}`); }
 }
 
 // Certificate auth — only for inter-system endpoint
 function certAuth(req, res, next) {
+  if (TRUST_XROAD && req.header('X-Road-Client')) {
+    const allowedXroadClients = ['BJ/GOV/PORTAL/CONCOURS', 'BJ/GOV/ANIP/REGISTRY'];
+    const client = req.header('X-Road-Client');
+    if (!allowedXroadClients.includes(client)) {
+      sendLog('REJECT', req.method, req.path, 403, `X-Road client "${client}" non autorisé`);
+      return res.status(403).json({ error: `X-Road client non autorisé: ${client}`, code: 'XROAD_UNAUTHORIZED' });
+    }
+    req.clientCN = client;
+    return next();
+  }
   const cert = req.socket.getPeerCertificate();
   if (!cert || !cert.subject) {
     sendLog('REJECT', req.method, req.path, 401, 'Aucun certificat client');

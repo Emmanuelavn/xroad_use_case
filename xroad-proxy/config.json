@@ -1,0 +1,49 @@
+{
+  "members": [
+    {
+      "id": "BJ/GOV/PORTAL/CONCOURS",
+      "securityServerUrl": "http://xroad-portal:8080"
+    },
+    {
+      "id": "BJ/GOV/ANIP/REGISTRY",
+      "securityServerUrl": "http://xroad-anip:8080"
+    },
+    {
+      "id": "BJ/GOV/JUSTICE/CASIER",
+      "securityServerUrl": "http://xroad-justice:8080"
+    },
+    {
+      "id": "BJ/GOV/DGES/DIPLOMES",
+      "securityServerUrl": "http://xroad-dges:8080"
+    }
+  ],
+  "services": [
+    {
+      "id": "BJ/GOV/PORTAL/CONCOURS/portal",
+      "backendUrl": "https://system-a-portal:3000"
+    },
+    {
+      "id": "BJ/GOV/ANIP/REGISTRY/anip",
+      "backendUrl": "https://system-b-anip:3001"
+    },
+    {
+      "id": "BJ/GOV/JUSTICE/CASIER/justice",
+      "backendUrl": "https://system-c-justice:3002"
+    },
+    {
+      "id": "BJ/GOV/DGES/DIPLOMES/dges",
+      "backendUrl": "https://system-d-dges:3003"
+    }
+  ],
+  "acl": {
+    "BJ/GOV/PORTAL/CONCOURS": [
+      "BJ/GOV/ANIP/REGISTRY/anip",
+      "BJ/GOV/JUSTICE/CASIER/justice",
+      "BJ/GOV/DGES/DIPLOMES/dges"
+    ],
+    "BJ/GOV/ANIP/REGISTRY": [
+      "BJ/GOV/JUSTICE/CASIER/justice",
+      "BJ/GOV/DGES/DIPLOMES/dges"
+    ]
+  }
+}

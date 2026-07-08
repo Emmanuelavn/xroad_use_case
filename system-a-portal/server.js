@@ -8,8 +8,14 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 const CERTS_DIR = path.join(__dirname, 'certs');
+const XROAD_BASE_URL = process.env.XROAD_BASE_URL;
+const XROAD_CLIENT = process.env.XROAD_CLIENT || 'BJ/GOV/PORTAL/CONCOURS';
+const OOTS_DIR = path.join(__dirname, 'oots-lite');
+const evidenceBroker = JSON.parse(fs.readFileSync(path.join(OOTS_DIR, 'evidence-broker.json'), 'utf8'));
+const dataServiceDirectory = JSON.parse(fs.readFileSync(path.join(OOTS_DIR, 'data-service-directory.json'), 'utf8'));
+const semanticRepository = JSON.parse(fs.readFileSync(path.join(OOTS_DIR, 'semantic-repository.json'), 'utf8'));
 
 const serverCert = fs.readFileSync(path.join(CERTS_DIR, 'server-cert.pem'));
 const serverKey = fs.readFileSync(path.join(CERTS_DIR, 'server-key.pem'));
@@ -54,9 +60,144 @@ app.get('/api/logs/stream', (req, res) => {
   req.on('close', () => { clearInterval(keepalive); const i = logClients.indexOf(res); if (i >= 0) logClients.splice(i, 1); console.log(`[SSE] Client deconnecte — total: ${logClients.length}`); });
 });
 
-// HTTPS call to ANIP with client certificate
+function callJsonOverHttp(method, targetUrl, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(targetUrl);
+    const transport = urlObj.protocol === 'https:' ? https : http;
+    const postData = body ? JSON.stringify(body) : null;
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      path: `${urlObj.pathname}${urlObj.search}`,
+      method,
+      rejectUnauthorized: false,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...headers,
+        ...(postData ? { 'Content-Length': Buffer.byteLength(postData) } : {})
+      }
+    };
+    const req = transport.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
+        catch (e) { resolve({ status: res.statusCode, body: data }); }
+      });
+    });
+    req.on('error', reject);
+    if (postData) req.write(postData);
+    req.end();
+  });
+}
+
+function formatTemplate(value, context) {
+  if (typeof value === 'string') {
+    return value.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => context[key] ?? '');
+  }
+  if (Array.isArray(value)) return value.map(item => formatTemplate(item, context));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, formatTemplate(item, context)]));
+  }
+  return value;
+}
+
+function getField(object, field) {
+  return field.split('.').reduce((current, part) => current?.[part], object);
+}
+
+function evaluateRule(rule, evidence) {
+  const actual = getField(evidence, rule.field);
+  if (rule.operator === 'equals') return actual === rule.value;
+  throw new Error(`Operateur de regle non supporte: ${rule.operator}`);
+}
+
+function hasRequiredResponseFields(evidenceType, payload) {
+  const definition = semanticRepository.evidence_types[evidenceType];
+  if (!definition) return true;
+  return definition.required_response_fields.every(field => getField(payload, field) !== undefined);
+}
+
+async function collectEvidence(evidenceType, context) {
+  const service = dataServiceDirectory.data_services[evidenceType];
+  if (!service) throw new Error(`Aucun data service pour la preuve ${evidenceType}`);
+
+  const restPath = formatTemplate(service.path, context);
+  const body = service.body ? formatTemplate(service.body, context) : null;
+  const target = `${XROAD_BASE_URL}/r1/${service.service_id}${restPath}`;
+  addLog('A-PORTAL', 'OUT', service.method, restPath, '-', `OOTS-lite ${evidenceType} -> ${service.provider}`);
+  const response = await callJsonOverHttp(service.method, target, body, { 'X-Road-Client': XROAD_CLIENT });
+  addLog('A-PORTAL', 'IN', service.method, restPath, response.status, `Preuve ${evidenceType} de ${service.provider}`);
+
+  if (response.status < 200 || response.status >= 300) {
+    return {
+      evidence_type: evidenceType,
+      provider: service.provider,
+      valid: false,
+      status: response.status,
+      motif: response.body?.motif || response.body?.error || `Preuve ${evidenceType} indisponible`
+    };
+  }
+
+  if (!hasRequiredResponseFields(evidenceType, response.body)) {
+    return {
+      evidence_type: evidenceType,
+      provider: service.provider,
+      valid: false,
+      status: 502,
+      motif: `Contrat semantique incomplet pour ${evidenceType}`
+    };
+  }
+
+  return {
+    evidence_type: evidenceType,
+    provider: service.provider,
+    valid: true,
+    status: response.status,
+    body: response.body
+  };
+}
+
+async function evaluateConcoursEligibility(npi, numero_diplome) {
+  const procedure = evidenceBroker.procedures['concours-bourses-master-2026'];
+  const context = { npi, numero_diplome };
+  const collected = {};
+  const checks = [];
+
+  for (const evidenceType of procedure.required_evidence_types) {
+    const result = await collectEvidence(evidenceType, context);
+    collected[evidenceType] = result.body;
+    checks.push({ evidence_type: evidenceType, provider: result.provider, status: result.valid ? 'valid' : 'invalid' });
+    if (!result.valid) return { status: result.status || 403, body: { succes: false, motif: result.motif, checks } };
+
+    const rule = procedure.rules.find(item => item.evidence_type === evidenceType);
+    if (rule && !evaluateRule(rule, result.body)) {
+      return { status: 403, body: { succes: false, motif: rule.failure_message, checks } };
+    }
+  }
+
+  const personne = collected['identity-nationality'];
+  const casier = collected['criminal-record'];
+  const diplome = collected['diploma-authenticity'];
+  return {
+    status: 200,
+    body: {
+      succes: true,
+      candidat: { npi, nom: personne.nom, prenoms: personne.prenoms, nationalite: personne.nationalite },
+      casier: { statut: casier.statut_casier },
+      diplome: { authentique: diplome.authentique, filiere: diplome.filiere, grade: diplome.intitule_grade },
+      checks
+    }
+  };
+}
+
+// HTTPS call to ANIP with client certificate in local mode, or OOTS-lite evidence collection over X-Road in container mode.
 function callANIP(npi, numero_diplome) {
-  addLog('A-PORTAL', 'OUT', 'POST', '/api/v1/concours/verifier', '-', `NPI=${npi} Diplôme=${numero_diplome} (certificat client Portal-Concours)`);
+  addLog('A-PORTAL', 'OUT', 'POST', '/api/v1/concours/verifier', '-', `NPI=${npi} Diplôme=${numero_diplome} (${XROAD_BASE_URL ? 'OOTS-lite Evidence Requester' : 'certificat client Portal-Concours'})`);
+  if (XROAD_BASE_URL) {
+    return evaluateConcoursEligibility(npi, numero_diplome);
+  }
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify({ npi, numero_diplome });
     const options = {
@@ -82,6 +223,17 @@ function callANIP(npi, numero_diplome) {
 }
 
 function fetchSecure(port, path) {
+  if (XROAD_BASE_URL) {
+    const serviceByPort = {
+      3001: 'BJ/GOV/ANIP/REGISTRY/anip',
+      3002: 'BJ/GOV/JUSTICE/CASIER/justice',
+      3003: 'BJ/GOV/DGES/DIPLOMES/dges'
+    };
+    const serviceId = serviceByPort[port];
+    if (!serviceId) return Promise.resolve([]);
+    return callJsonOverHttp('GET', `${XROAD_BASE_URL}/r1/${serviceId}${path}`, null, { 'X-Road-Client': XROAD_CLIENT })
+      .then((response) => Array.isArray(response.body) ? response.body : []);
+  }
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'localhost', port, path, method: 'GET',
@@ -120,13 +272,13 @@ app.post('/api/v1/concours/inscrire', async (req, res) => {
     return res.status(anipResponse.status || 403).json({ succes: false, motif: anipResponse.body.motif || 'Vérification échouée' });
   }
 
-  const c = anipResponse.body.candidat;
+  const c = { npi, ...anipResponse.body.candidat };
   inscriptions.push({ id_inscription: nextId++, npi, nom_complet: `${c.prenoms} ${c.nom}`, numero_diplome, date_inscription: new Date().toISOString() });
   addLog('A-PORTAL', 'SUCCESS', 'POST', '/api/v1/concours/inscrire', 200, `Vérification ${c.prenoms} ${c.nom} OK`);
 
   res.json({
     succes: true, message: `Vérification réussie pour ${c.prenoms} ${c.nom}. Vous pouvez maintenant procéder au paiement des frais de quittance.`,
-    candidat: anipResponse.body.candidat, casier: anipResponse.body.casier, diplome: anipResponse.body.diplome
+    candidat: c, casier: anipResponse.body.casier, diplome: anipResponse.body.diplome
   });
 });
 

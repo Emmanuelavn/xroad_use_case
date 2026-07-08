@@ -8,9 +8,14 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PORT = 3001;
+const PORT = Number(process.env.PORT || 3001);
 const DB_FILE = path.join(__dirname, 'data.json');
 const CERTS_DIR = path.join(__dirname, 'certs');
+const LOG_HOST = process.env.LOG_HOST || 'localhost';
+const LOG_PORT = Number(process.env.LOG_PORT || 3000);
+const TRUST_XROAD = process.env.TRUST_XROAD === 'true';
+const XROAD_BASE_URL = process.env.XROAD_BASE_URL;
+const XROAD_CLIENT = process.env.XROAD_CLIENT || 'BJ/GOV/ANIP/REGISTRY';
 
 const serverCert = fs.readFileSync(path.join(CERTS_DIR, 'server-cert.pem'));
 const serverKey = fs.readFileSync(path.join(CERTS_DIR, 'server-key.pem'));
@@ -33,12 +38,22 @@ function save() { fs.writeFileSync(DB_FILE, JSON.stringify(personnes, null, 2));
 function sendLog(direction, method, p, status, detail) {
   const data = JSON.stringify({ source: 'B-ANIP', direction, method, path: p, status, detail, time: new Date().toISOString() });
   try {
-    const req = https.request({ hostname: 'localhost', port: 3000, path: '/api/logs/push', method: 'POST', ca: caCert, rejectUnauthorized: false, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => { res.resume(); });
+    const req = https.request({ hostname: LOG_HOST, port: LOG_PORT, path: '/api/logs/push', method: 'POST', ca: caCert, rejectUnauthorized: false, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => { res.resume(); });
     req.on('error', (e) => { console.error(`[ANIP] sendLog ERROR: ${e.message}`); }); req.write(data); req.end();
   } catch(e) { console.error(`[ANIP] sendLog EXCEPTION: ${e.message}`); }
 }
 
 function certAuth(req, res, next) {
+  if (TRUST_XROAD && req.header('X-Road-Client')) {
+    const allowedXroadClients = ['BJ/GOV/PORTAL/CONCOURS'];
+    const client = req.header('X-Road-Client');
+    if (!allowedXroadClients.includes(client)) {
+      sendLog('REJECT', req.method, req.path, 403, `X-Road client "${client}" non autorisé`);
+      return res.status(403).json({ error: `X-Road client non autorisé: ${client}`, code: 'XROAD_UNAUTHORIZED' });
+    }
+    req.clientCN = client;
+    return next();
+  }
   if (req.path.startsWith('/admin') || req.path === '/' || req.path === '/favicon.ico') return next();
   const cert = req.socket.getPeerCertificate();
   if (!cert || !cert.subject) {
@@ -54,8 +69,53 @@ function certAuth(req, res, next) {
   req.clientCN = cn;
   next();
 }
+
+function callServiceXRoad(method, serviceId, restPath, body) {
+  const target = `${XROAD_BASE_URL}/r1/${serviceId}${restPath}`;
+  return callServiceHTTP(method, target, body, { 'X-Road-Client': XROAD_CLIENT });
+}
+
+function callServiceHTTP(method, url, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const transport = urlObj.protocol === 'https:' ? https : http;
+    const postData = body ? JSON.stringify(body) : null;
+    sendLog('OUT', method, urlObj.pathname, '-', `Via X-Road ${XROAD_CLIENT}`);
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      path: `${urlObj.pathname}${urlObj.search}`,
+      method,
+      rejectUnauthorized: false,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...headers,
+        ...(postData ? { 'Content-Length': Buffer.byteLength(postData) } : {})
+      }
+    };
+    const req = transport.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        sendLog('IN', method, urlObj.pathname, res.statusCode, `${res.statusCode === 200 ? 'OK' : 'FAIL'} — X-Road`);
+        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
+        catch (e) { resolve({ status: res.statusCode, body: data }); }
+      });
+    });
+    req.on('error', (e) => { sendLog('ERROR', method, urlObj.pathname, '-', e.message); reject(e); });
+    if (postData) req.write(postData);
+    req.end();
+  });
+}
+
 // HTTPS call with client certificate
 function callServiceHTTPS(method, url, body) {
+  if (XROAD_BASE_URL) {
+    const urlObj = new URL(url);
+    if (urlObj.port === '3002') return callServiceXRoad(method, 'BJ/GOV/JUSTICE/CASIER/justice', urlObj.pathname, body);
+    if (urlObj.port === '3003') return callServiceXRoad(method, 'BJ/GOV/DGES/DIPLOMES/dges', urlObj.pathname, body);
+  }
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const postData = body ? JSON.stringify(body) : null;
@@ -112,7 +172,7 @@ app.post('/api/v1/concours/verifier', certAuth, async (req, res) => {
   sendLog('SUCCESS', 'POST', '/api/v1/concours/verifier', 200, `${personne.prenoms} ${personne.nom} validé`);
   res.json({
     succes: true,
-    candidat: { npi: personne.npi, nom: personne.nom, prenoms: personne.prenoms, nationalite: personne.nationalite },
+    candidat: { nom: personne.nom, prenoms: personne.prenoms, nationalite: personne.nationalite },
     casier: { statut: casier.body.statut_casier },
     diplome: { authentique: diplome.body.authentique, filiere: diplome.body.filiere, grade: diplome.body.intitule_grade }
   });
@@ -121,6 +181,17 @@ app.post('/api/v1/concours/verifier', certAuth, async (req, res) => {
 // CRUD API
 app.get('/api/v1/personnes', (req, res) => { res.json(Object.values(personnes)); });
 app.get('/api/v1/personnes/:npi', (req, res) => { const p = personnes[req.params.npi]; if (!p) return res.status(404).json({error:'Non trouvé'}); res.json(p); });
+app.get('/api/v1/anip/personnes/:npi', certAuth, (req, res) => {
+  sendLog('IN', 'GET', `/api/v1/anip/personnes/${req.params.npi}`, '-', `Requete de "${req.clientCN}" — NPI ${req.params.npi}`);
+  const p = personnes[req.params.npi];
+  if (!p) {
+    sendLog('REJECT', 'GET', `/api/v1/anip/personnes/${req.params.npi}`, 404, 'NPI inconnu');
+    return res.status(404).json({ error: 'NPI inconnu' });
+  }
+  sendLog('SUCCESS', 'GET', `/api/v1/anip/personnes/${req.params.npi}`, 200, `${p.prenoms} ${p.nom}`);
+  const { npi, ...evidence } = p;
+  res.json(evidence);
+});
 app.post('/api/v1/personnes', (req, res) => { const {npi,nom,prenoms,date_naissance,nationalite}=req.body; if(!npi||!nom||!prenoms||!date_naissance||!nationalite) return res.status(400).json({error:'Champs requis manquants'}); if(personnes[npi]) return res.status(409).json({error:'NPI déjà existant'}); personnes[npi]={npi,nom,prenoms,date_naissance,nationalite}; save(); res.status(201).json(personnes[npi]); });
 app.put('/api/v1/personnes/:npi', (req, res) => { const p=personnes[req.params.npi]; if(!p) return res.status(404).json({error:'Non trouvé'}); Object.assign(p,req.body); save(); res.json(p); });
 app.delete('/api/v1/personnes/:npi', (req, res) => { if(!personnes[req.params.npi]) return res.status(404).json({error:'Non trouvé'}); delete personnes[req.params.npi]; save(); res.json({ok:true}); });

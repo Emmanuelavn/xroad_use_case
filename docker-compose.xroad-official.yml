@@ -1,0 +1,151 @@
+services:
+  xroad-central:
+    image: niis/xroad-central-server:${XROAD_CENTRAL_TAG:-noble-7.8.2}
+    container_name: xroad-central
+    ports:
+      - "80:80"
+      - "4000:4000"
+      - "4001:4001"
+      - "4002:4002"
+      - "8888:8888"
+      - "8899:8899"
+    volumes:
+      - xroad-central-etc:/etc/xroad
+      - xroad-central-var:/var/lib/xroad
+      - xroad-central-db:/var/lib/postgresql/16/main
+
+  system-a-portal:
+    build: ./system-a-portal
+    environment:
+      PORT: 3000
+      XROAD_BASE_URL: ${PORTAL_XROAD_BASE_URL:-http://xroad-portal-ss:8080}
+      XROAD_CLIENT: BJ/GOV/PORTAL/CONCOURS
+    ports:
+      - "3000:3000"
+
+  system-b-anip:
+    build: ./system-b-anip
+    environment:
+      PORT: 3001
+      TRUST_XROAD: "true"
+      XROAD_BASE_URL: ${ANIP_XROAD_BASE_URL:-http://xroad-anip-ss:8080}
+      XROAD_CLIENT: BJ/GOV/ANIP/REGISTRY
+      LOG_HOST: system-a-portal
+      LOG_PORT: 3000
+
+  system-c-justice:
+    build: ./system-c-justice
+    environment:
+      PORT: 3002
+      TRUST_XROAD: "true"
+      LOG_HOST: system-a-portal
+      LOG_PORT: 3000
+
+  system-d-dges:
+    build: ./system-d-dges
+    environment:
+      PORT: 3003
+      TRUST_XROAD: "true"
+      LOG_HOST: system-a-portal
+      LOG_PORT: 3000
+
+  xroad-portal-ss:
+    image: niis/xroad-security-server-sidecar:${XROAD_SECURITY_SERVER_TAG:-7.8.2}
+    hostname: xroad-portal-ss
+    environment:
+      XROAD_TOKEN_PIN: ${XROAD_TOKEN_PIN:-Str0ng-Pin!2026}
+      XROAD_ADMIN_USER: ${XROAD_ADMIN_USER:-xrd}
+      XROAD_ADMIN_PASSWORD: ${XROAD_ADMIN_PASSWORD:-secret}
+      XROAD_LOG_LEVEL: INFO
+    ports:
+      - "4100:4000"
+      - "5580:5588"
+      - "8180:8080"
+      - "8543:8443"
+    volumes:
+      - xroad-portal-etc:/etc/xroad
+      - xroad-portal-var:/var/lib/xroad
+      - xroad-portal-db:/var/lib/postgresql/16/main
+    depends_on:
+      - xroad-central
+      - system-a-portal
+
+  xroad-anip-ss:
+    image: niis/xroad-security-server-sidecar:${XROAD_SECURITY_SERVER_TAG:-7.8.2}
+    hostname: xroad-anip-ss
+    environment:
+      XROAD_TOKEN_PIN: ${XROAD_TOKEN_PIN:-Str0ng-Pin!2026}
+      XROAD_ADMIN_USER: ${XROAD_ADMIN_USER:-xrd}
+      XROAD_ADMIN_PASSWORD: ${XROAD_ADMIN_PASSWORD:-secret}
+      XROAD_LOG_LEVEL: INFO
+    ports:
+      - "4101:4000"
+      - "5581:5588"
+      - "8181:8080"
+      - "8544:8443"
+    volumes:
+      - xroad-anip-etc:/etc/xroad
+      - xroad-anip-var:/var/lib/xroad
+      - xroad-anip-db:/var/lib/postgresql/16/main
+    depends_on:
+      - xroad-central
+      - system-b-anip
+
+  xroad-justice-ss:
+    image: niis/xroad-security-server-sidecar:${XROAD_SECURITY_SERVER_TAG:-7.8.2}
+    hostname: xroad-justice-ss
+    environment:
+      XROAD_TOKEN_PIN: ${XROAD_TOKEN_PIN:-Str0ng-Pin!2026}
+      XROAD_ADMIN_USER: ${XROAD_ADMIN_USER:-xrd}
+      XROAD_ADMIN_PASSWORD: ${XROAD_ADMIN_PASSWORD:-secret}
+      XROAD_LOG_LEVEL: INFO
+    ports:
+      - "4102:4000"
+      - "5582:5588"
+      - "8182:8080"
+      - "8545:8443"
+    volumes:
+      - xroad-justice-etc:/etc/xroad
+      - xroad-justice-var:/var/lib/xroad
+      - xroad-justice-db:/var/lib/postgresql/16/main
+    depends_on:
+      - xroad-central
+      - system-c-justice
+
+  xroad-dges-ss:
+    image: niis/xroad-security-server-sidecar:${XROAD_SECURITY_SERVER_TAG:-7.8.2}
+    hostname: xroad-dges-ss
+    environment:
+      XROAD_TOKEN_PIN: ${XROAD_TOKEN_PIN:-Str0ng-Pin!2026}
+      XROAD_ADMIN_USER: ${XROAD_ADMIN_USER:-xrd}
+      XROAD_ADMIN_PASSWORD: ${XROAD_ADMIN_PASSWORD:-secret}
+      XROAD_LOG_LEVEL: INFO
+    ports:
+      - "4103:4000"
+      - "5583:5588"
+      - "8183:8080"
+      - "8546:8443"
+    volumes:
+      - xroad-dges-etc:/etc/xroad
+      - xroad-dges-var:/var/lib/xroad
+      - xroad-dges-db:/var/lib/postgresql/16/main
+    depends_on:
+      - xroad-central
+      - system-d-dges
+
+volumes:
+  xroad-central-etc:
+  xroad-central-var:
+  xroad-central-db:
+  xroad-portal-etc:
+  xroad-portal-var:
+  xroad-portal-db:
+  xroad-anip-etc:
+  xroad-anip-var:
+  xroad-anip-db:
+  xroad-justice-etc:
+  xroad-justice-var:
+  xroad-justice-db:
+  xroad-dges-etc:
+  xroad-dges-var:
+  xroad-dges-db:

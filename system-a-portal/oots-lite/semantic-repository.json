@@ -1,0 +1,16 @@
+{
+  "evidence_types": {
+    "identity-nationality": {
+      "description": "Identite minimale et nationalite du candidat",
+      "required_response_fields": ["nom", "prenoms", "nationalite"]
+    },
+    "criminal-record": {
+      "description": "Statut du casier judiciaire",
+      "required_response_fields": ["statut_casier"]
+    },
+    "diploma-authenticity": {
+      "description": "Authenticite du diplome declare",
+      "required_response_fields": ["authentique", "filiere", "intitule_grade"]
+    }
+  }
+}

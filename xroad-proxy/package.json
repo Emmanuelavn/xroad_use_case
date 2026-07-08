@@ -1,0 +1,12 @@
+{
+  "name": "xroad-proxy-sim",
+  "version": "1.0.0",
+  "description": "Minimal X-Road-like Security Server proxy for the once-only demo",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

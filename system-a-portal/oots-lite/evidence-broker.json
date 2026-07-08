@@ -1,0 +1,35 @@
+{
+  "procedures": {
+    "concours-bourses-master-2026": {
+      "label": "Concours national de bourses d'etudes - Master 2026",
+      "required_evidence_types": [
+        "identity-nationality",
+        "criminal-record",
+        "diploma-authenticity"
+      ],
+      "rules": [
+        {
+          "evidence_type": "identity-nationality",
+          "field": "nationalite",
+          "operator": "equals",
+          "value": "Béninoise",
+          "failure_message": "Candidature refusée : Nationalité non conforme. Seuls les citoyens béninois sont éligibles."
+        },
+        {
+          "evidence_type": "criminal-record",
+          "field": "statut_casier",
+          "operator": "equals",
+          "value": "VIERGE",
+          "failure_message": "Candidature refusée : Casier judiciaire non vierge"
+        },
+        {
+          "evidence_type": "diploma-authenticity",
+          "field": "authentique",
+          "operator": "equals",
+          "value": true,
+          "failure_message": "Candidature refusée : Diplôme non reconnu ou ne correspondant pas au NPI déclaré"
+        }
+      ]
+    }
+  }
+}

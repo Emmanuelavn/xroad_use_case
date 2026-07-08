@@ -1,0 +1,26 @@
+{
+  "data_services": {
+    "identity-nationality": {
+      "provider": "ANIP",
+      "service_id": "BJ/GOV/ANIP/REGISTRY/anip",
+      "method": "GET",
+      "path": "/api/v1/anip/personnes/{npi}"
+    },
+    "criminal-record": {
+      "provider": "Justice",
+      "service_id": "BJ/GOV/JUSTICE/CASIER/justice",
+      "method": "GET",
+      "path": "/api/v1/justice/casier/{npi}"
+    },
+    "diploma-authenticity": {
+      "provider": "DGES",
+      "service_id": "BJ/GOV/DGES/DIPLOMES/dges",
+      "method": "POST",
+      "path": "/api/v1/dges/diplome/verifier",
+      "body": {
+        "npi": "{npi}",
+        "numero_diplome": "{numero_diplome}"
+      }
+    }
+  }
+}
