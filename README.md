@@ -249,7 +249,7 @@ Le fichier `docker-compose.xroad-official.yml` lance les composants X-Road offic
 
 | Composant | Image | URL locale |
 | --- | --- | --- |
-| Central Server | `niis/xroad-central-server:noble-7.8.2` | `http://localhost:4000` |
+| Central Server | `niis/xroad-central-server:noble-7.8.2` | `https://localhost:4000` |
 | Security Server Portail | `niis/xroad-security-server-sidecar:7.8.2` | `https://localhost:4100` |
 | Security Server ANIP | `niis/xroad-security-server-sidecar:7.8.2` | `https://localhost:4101` |
 | Security Server Justice | `niis/xroad-security-server-sidecar:7.8.2` | `https://localhost:4102` |
@@ -259,6 +259,23 @@ Demarrage:
 
 ```powershell
 npm run compose:xroad:official
+```
+
+Les UI natives X-Road sont disponibles apres l'initialisation Java des conteneurs, ce qui peut prendre quelques minutes sur Docker Desktop:
+
+```text
+https://localhost:4000  Central Server UI
+https://localhost:4100  Security Server Portail UI
+https://localhost:4101  Security Server ANIP UI
+https://localhost:4102  Security Server Justice UI
+https://localhost:4103  Security Server DGES UI
+```
+
+Il faut accepter le certificat autosigne dans le navigateur. Si une page ne s'affiche pas encore, verifier que le port repond:
+
+```powershell
+Invoke-WebRequest -Uri https://localhost:4000 -SkipCertificateCheck -UseBasicParsing
+Invoke-WebRequest -Uri https://localhost:4100 -SkipCertificateCheck -UseBasicParsing
 ```
 
 Identifiants par defaut:
