@@ -38,6 +38,68 @@ https://localhost:3000
 
 Dans ce mode, les appels inter-systemes utilisent les certificats mTLS deja presents dans chaque dossier `certs`.
 
+## Mode APIs only en containers derriere Nginx
+
+Le fichier `docker-compose.apis-only.yml` lance uniquement les trois APIs fournisseurs (`ANIP`, `Justice`, `DGES`) derriere un Nginx unique. Il ne lance ni Central Server, ni Security Server, ni proxy X-Road simule.
+
+Demarrage:
+
+```powershell
+npm run compose:apis
+```
+
+Arret:
+
+```powershell
+npm run compose:apis:down
+```
+
+URL locale unique:
+
+```text
+http://localhost:38000
+```
+
+Routes exposees:
+
+| API | URL hote | Backend interne |
+| --- | --- |
+| ANIP | `http://localhost:38000/anip/...` | `system-b-anip:3001` |
+| Justice | `http://localhost:38000/justice/...` | `system-c-justice:3002` |
+| DGES | `http://localhost:38000/dges/...` | `system-d-dges:3003` |
+
+Dans ce mode, les providers tournent en HTTP interne avec `TRUST_XROAD=true`; l'identite systeme reste simulee par le header `X-Road-Client`, sans serveur de securite local. L'objectif est de publier les APIs backend sur un seul domaine, puis de les ajouter comme REST APIs dans des Security Servers X-Road distants.
+
+URLs typiques a declarer dans les Security Servers distants:
+
+```text
+http://<domaine>:38000/anip
+http://<domaine>:38000/justice
+http://<domaine>:38000/dges
+```
+
+Tests rapides:
+
+```powershell
+curl.exe -sS "http://localhost:38000/health"
+
+curl.exe -sS "http://localhost:38000/anip/api/v1/anip/personnes/11111111111111" `
+  -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS"
+
+curl.exe -sS "http://localhost:38000/justice/api/v1/justice/casier/11111111111111" `
+  -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS"
+
+curl.exe -sS -X POST "http://localhost:38000/dges/api/v1/dges/diplome/verifier" `
+  -H "Content-Type: application/json" `
+  -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS" `
+  -d '{ "npi": "11111111111111", "numero_diplome": "DIP-LIC-2024-001" }'
+
+curl.exe -sS -X POST "http://localhost:38000/anip/api/v1/concours/verifier" `
+  -H "Content-Type: application/json" `
+  -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS" `
+  -d '{ "npi": "11111111111111", "numero_diplome": "DIP-LIC-2024-001" }'
+```
+
 ## Mode X-Road simule en containers
 
 Le fichier `docker-compose.xroad-sim.yml` ajoute un noeud X-Road simule devant chaque service:

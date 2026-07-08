@@ -13,10 +13,13 @@ const DB_FILE = path.join(__dirname, 'data.json');
 const CERTS_DIR = path.join(__dirname, 'certs');
 const LOG_HOST = process.env.LOG_HOST || 'localhost';
 const LOG_PORT = Number(process.env.LOG_PORT || 3000);
+const LOG_DISABLED = process.env.LOG_DISABLED === 'true';
 const TRUST_XROAD = process.env.TRUST_XROAD === 'true';
 const HTTP_ONLY = process.env.HTTP_ONLY === 'true';
 const XROAD_BASE_URL = process.env.XROAD_BASE_URL;
 const XROAD_CLIENT = process.env.XROAD_CLIENT || 'BJ/GOV/ANIP/REGISTRY';
+const JUSTICE_BASE_URL = process.env.JUSTICE_BASE_URL;
+const DGES_BASE_URL = process.env.DGES_BASE_URL;
 
 const serverCert = fs.readFileSync(path.join(CERTS_DIR, 'server-cert.pem'));
 const serverKey = fs.readFileSync(path.join(CERTS_DIR, 'server-key.pem'));
@@ -37,6 +40,7 @@ else { fs.writeFileSync(DB_FILE, JSON.stringify(DEFAULT_DATA, null, 2)); personn
 function save() { fs.writeFileSync(DB_FILE, JSON.stringify(personnes, null, 2)); }
 
 function sendLog(direction, method, p, status, detail) {
+  if (LOG_DISABLED) return;
   const data = JSON.stringify({ source: 'B-ANIP', direction, method, path: p, status, detail, time: new Date().toISOString() });
   try {
     const req = https.request({ hostname: LOG_HOST, port: LOG_PORT, path: '/api/logs/push', method: 'POST', ca: caCert, rejectUnauthorized: false, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => { res.resume(); });
@@ -112,13 +116,18 @@ function callServiceHTTP(method, url, body, headers = {}) {
 
 // HTTPS call with client certificate
 function callServiceHTTPS(method, url, body) {
+  const urlObj = new URL(url);
+  if (JUSTICE_BASE_URL && urlObj.port === '3002') {
+    return callServiceHTTP(method, `${JUSTICE_BASE_URL}${urlObj.pathname}`, body, { 'X-Road-Client': XROAD_CLIENT });
+  }
+  if (DGES_BASE_URL && urlObj.port === '3003') {
+    return callServiceHTTP(method, `${DGES_BASE_URL}${urlObj.pathname}`, body, { 'X-Road-Client': XROAD_CLIENT });
+  }
   if (XROAD_BASE_URL) {
-    const urlObj = new URL(url);
     if (urlObj.port === '3002') return callServiceXRoad(method, 'BJ/GOV/JUSTICE/CASIER/justice', urlObj.pathname, body);
     if (urlObj.port === '3003') return callServiceXRoad(method, 'BJ/GOV/DGES/DIPLOMES/dges', urlObj.pathname, body);
   }
   return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
     const postData = body ? JSON.stringify(body) : null;
     sendLog('OUT', method, urlObj.pathname, '-', `Vers ${urlObj.hostname}:${urlObj.port} (certificat client ANIP-Registry)`);
     const options = {

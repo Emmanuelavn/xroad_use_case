@@ -10,6 +10,8 @@
     "start:d": "cd system-d-dges && node server.js",
     "start:all": "node start-all.js",
     "test": "node test-scenarios.js",
+    "compose:apis": "docker compose -f docker-compose.apis-only.yml up --build",
+    "compose:apis:down": "docker compose -f docker-compose.apis-only.yml down",
     "compose:xroad": "docker compose -f docker-compose.xroad-sim.yml up --build",
     "compose:xroad:down": "docker compose -f docker-compose.xroad-sim.yml down",
     "compose:xroad:official": "docker compose -f docker-compose.xroad-official.yml up --build",

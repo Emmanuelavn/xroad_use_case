@@ -13,6 +13,7 @@ const DB_FILE = path.join(__dirname, 'data.json');
 const CERTS_DIR = path.join(__dirname, 'certs');
 const LOG_HOST = process.env.LOG_HOST || 'localhost';
 const LOG_PORT = Number(process.env.LOG_PORT || 3000);
+const LOG_DISABLED = process.env.LOG_DISABLED === 'true';
 const TRUST_XROAD = process.env.TRUST_XROAD === 'true';
 const HTTP_ONLY = process.env.HTTP_ONLY === 'true';
 
@@ -32,6 +33,7 @@ else { fs.writeFileSync(DB_FILE, JSON.stringify(DEFAULT_DATA, null, 2)); diplome
 function save() { fs.writeFileSync(DB_FILE, JSON.stringify(diplomes, null, 2)); }
 
 function sendLog(direction, method, p, status, detail) {
+  if (LOG_DISABLED) return;
   const data = JSON.stringify({ source: 'D-DGES', direction, method, path: p, status, detail, time: new Date().toISOString() });
   try {
     const req = https.request({ hostname: LOG_HOST, port: LOG_PORT, path: '/api/logs/push', method: 'POST', ca: caCert, rejectUnauthorized: false, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => { res.resume(); });

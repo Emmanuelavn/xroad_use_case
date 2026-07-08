@@ -1,0 +1,49 @@
+name: xroad-apis-only
+
+services:
+  system-b-anip:
+    build:
+      context: ./system-b-anip
+      dockerfile: Dockerfile.apis-only
+    environment:
+      PORT: 3001
+      HTTP_ONLY: "true"
+      TRUST_XROAD: "true"
+      XROAD_CLIENT: BJ/GOV/ANIP/REGISTRY
+      JUSTICE_BASE_URL: http://system-c-justice:3002
+      DGES_BASE_URL: http://system-d-dges:3003
+      LOG_DISABLED: "true"
+    depends_on:
+      - system-c-justice
+      - system-d-dges
+
+  system-c-justice:
+    build:
+      context: ./system-c-justice
+      dockerfile: Dockerfile.apis-only
+    environment:
+      PORT: 3002
+      HTTP_ONLY: "true"
+      TRUST_XROAD: "true"
+      LOG_DISABLED: "true"
+
+  system-d-dges:
+    build:
+      context: ./system-d-dges
+      dockerfile: Dockerfile.apis-only
+    environment:
+      PORT: 3003
+      HTTP_ONLY: "true"
+      TRUST_XROAD: "true"
+      LOG_DISABLED: "true"
+
+  apis-nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "38000:38000"
+    volumes:
+      - ./nginx/apis-only.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - system-b-anip
+      - system-c-justice
+      - system-d-dges
