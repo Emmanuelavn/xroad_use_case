@@ -261,6 +261,12 @@ Demarrage:
 npm run compose:xroad:official
 ```
 
+Equivalent Linux/macOS:
+
+```bash
+npm run compose:xroad:official
+```
+
 Les UI natives X-Road sont disponibles apres l'initialisation Java des conteneurs, ce qui peut prendre quelques minutes sur Docker Desktop:
 
 ```text
@@ -278,13 +284,15 @@ Invoke-WebRequest -Uri https://localhost:4000 -SkipCertificateCheck -UseBasicPar
 Invoke-WebRequest -Uri https://localhost:4100 -SkipCertificateCheck -UseBasicParsing
 ```
 
-Identifiants par defaut:
+Identifiants par defaut des UI natives X-Road:
 
 ```text
-user: xrd
-password: secret
-token pin: Str0ng-Pin!2026
+Compte UI admin: xrd
+Mot de passe UI: secret
+PIN du software token: Str0ng-Pin!2026
 ```
+
+Ces identifiants valent pour le Central Server et les Security Servers de lab. Le PIN sert a initialiser/deverrouiller le token logiciel X-Road, ce n'est pas le mot de passe de connexion UI.
 
 Ports utiles:
 
@@ -338,6 +346,13 @@ Correction de l'erreur `configuration-anchor.xml`:
 
 ```powershell
 .\scripts\bootstrap-xroad-official-anchor.ps1
+```
+
+Equivalent Linux/macOS:
+
+```bash
+chmod +x scripts/bootstrap-xroad-official-anchor.sh
+./scripts/bootstrap-xroad-official-anchor.sh
 ```
 
 Le script initialise le Central Server de lab, cree ou reactive les droits API necessaires, telecharge l'ancre de configuration interne et la copie dans les Security Servers. Il corrige le symptome vu dans les logs: `ANCHOR_FILE_NOT_FOUND` et `GlobalConf ... is empty`.
