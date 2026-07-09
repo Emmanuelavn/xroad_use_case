@@ -12,6 +12,9 @@ const PORT = Number(process.env.PORT || 3000);
 const CERTS_DIR = path.join(__dirname, 'certs');
 const XROAD_BASE_URL = process.env.XROAD_BASE_URL;
 const XROAD_CLIENT = process.env.XROAD_CLIENT || 'BJ/COM/CASE-TEST01/Anip';
+const XROAD_PROTOCOL = process.env.XROAD_PROTOCOL || 'uxp';
+const XROAD_TLS_CERT_PATH = process.env.XROAD_TLS_CERT_PATH || path.join(CERTS_DIR, 'client-cert.pem');
+const XROAD_TLS_KEY_PATH = process.env.XROAD_TLS_KEY_PATH || path.join(CERTS_DIR, 'client-key.pem');
 const OOTS_DIR = path.join(__dirname, 'oots-lite');
 const evidenceBroker = JSON.parse(fs.readFileSync(path.join(OOTS_DIR, 'evidence-broker.json'), 'utf8'));
 const dataServiceDirectory = JSON.parse(fs.readFileSync(path.join(OOTS_DIR, 'data-service-directory.json'), 'utf8'));
@@ -22,6 +25,8 @@ const serverKey = fs.readFileSync(path.join(CERTS_DIR, 'server-key.pem'));
 const caCert = fs.readFileSync(path.join(CERTS_DIR, 'ca-cert.pem'));
 const clientCert = fs.readFileSync(path.join(CERTS_DIR, 'client-cert.pem'));
 const clientKey = fs.readFileSync(path.join(CERTS_DIR, 'client-key.pem'));
+const xroadClientCert = fs.existsSync(XROAD_TLS_CERT_PATH) ? fs.readFileSync(XROAD_TLS_CERT_PATH) : null;
+const xroadClientKey = fs.existsSync(XROAD_TLS_KEY_PATH) ? fs.readFileSync(XROAD_TLS_KEY_PATH) : null;
 
 const inscriptions = [];
 const paiements = [];
@@ -71,6 +76,7 @@ function callJsonOverHttp(method, targetUrl, body, headers = {}) {
       path: `${urlObj.pathname}${urlObj.search}`,
       method,
       rejectUnauthorized: false,
+      ...(urlObj.protocol === 'https:' && xroadClientCert && xroadClientKey ? { cert: xroadClientCert, key: xroadClientKey } : {}),
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
@@ -119,15 +125,31 @@ function hasRequiredResponseFields(evidenceType, payload) {
   return definition.required_response_fields.every(field => getField(payload, field) !== undefined);
 }
 
+function buildServiceRequest(serviceId, restPath) {
+  if (XROAD_PROTOCOL === 'xroad-rest') {
+    return {
+      target: `${XROAD_BASE_URL}/r1/${serviceId}${restPath}`,
+      headers: { 'X-Road-Client': XROAD_CLIENT }
+    };
+  }
+  return {
+    target: `${XROAD_BASE_URL}/restapi${restPath}`,
+    headers: {
+      'Uxp-Client': XROAD_CLIENT,
+      'Uxp-Service': serviceId
+    }
+  };
+}
+
 async function collectEvidence(evidenceType, context) {
   const service = dataServiceDirectory.data_services[evidenceType];
   if (!service) throw new Error(`Aucun data service pour la preuve ${evidenceType}`);
 
   const restPath = formatTemplate(service.path, context);
   const body = service.body ? formatTemplate(service.body, context) : null;
-  const target = `${XROAD_BASE_URL}/r1/${service.service_id}${restPath}`;
+  const { target, headers } = buildServiceRequest(service.service_id, restPath);
   addLog('A-PORTAL', 'OUT', service.method, restPath, '-', `OOTS-lite ${evidenceType} -> ${service.provider}`);
-  const response = await callJsonOverHttp(service.method, target, body, { 'X-Road-Client': XROAD_CLIENT });
+  const response = await callJsonOverHttp(service.method, target, body, headers);
   addLog('A-PORTAL', 'IN', service.method, restPath, response.status, `Preuve ${evidenceType} de ${service.provider}`);
 
   if (response.status < 200 || response.status >= 300) {
@@ -232,7 +254,8 @@ function fetchSecure(port, path) {
     const evidenceType = evidenceTypeByPort[port];
     const serviceId = dataServiceDirectory.data_services[evidenceType]?.service_id;
     if (!serviceId) return Promise.resolve([]);
-    return callJsonOverHttp('GET', `${XROAD_BASE_URL}/r1/${serviceId}${path}`, null, { 'X-Road-Client': XROAD_CLIENT })
+    const { target, headers } = buildServiceRequest(serviceId, path);
+    return callJsonOverHttp('GET', target, null, headers)
       .then((response) => Array.isArray(response.body) ? response.body : []);
   }
   return new Promise((resolve, reject) => {

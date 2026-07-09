@@ -43,8 +43,9 @@ function sendLog(direction, method, p, status, detail) {
 
 // Certificate auth — only for inter-system endpoint
 function certAuth(req, res, next) {
-  if (TRUST_XROAD && req.header('X-Road-Client')) {
-    req.clientCN = req.header('X-Road-Client');
+  const trustedClient = req.header('Uxp-Client') || req.header('X-Road-Client');
+  if (TRUST_XROAD && trustedClient) {
+    req.clientCN = trustedClient;
     return next();
   }
   const cert = req.socket.getPeerCertificate();

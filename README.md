@@ -76,8 +76,11 @@ Dans ce mode, les providers tournent en HTTP interne avec `TRUST_XROAD=true`; l'
 Variables utiles pour le portail demandeur:
 
 ```env
-PORTAL_XROAD_BASE_URL=http://10.71.2.17
+PORTAL_XROAD_BASE_URL=https://10.71.2.17
 PORTAL_XROAD_CLIENT=BJ/COM/CASE-TEST01/Anip
+PORTAL_XROAD_PROTOCOL=uxp
+PORTAL_XROAD_TLS_CERT_PATH=/app/certs/client-cert.pem
+PORTAL_XROAD_TLS_KEY_PATH=/app/certs/client-key.pem
 ```
 
 Sur le domaine cible `cra-case.asin.bj`, le routage attendu est:
@@ -168,6 +171,18 @@ Le proxy valide les ACL dans `xroad-proxy/config.json`, transmet les headers `X-
 
 Dans le design OOTS-lite retenu, le portail est l'Evidence Requester de la procedure concours. Il a donc les droits d'appel vers les trois fournisseurs de preuves. ANIP n'agrege pas Justice et DGES dans ce mode simplifie.
 
+Avec UXP 1.24, l'appel REST depuis le portail vers son Security Server ne met pas l'identifiant service dans l'URL. Le format est:
+
+```text
+<METHOD> http://<security-server>/restapi/<rest-api-path>
+Uxp-Client:  BJ/COM/CASE-TEST01/Anip
+Uxp-Service: BJ/COM/CASE-TEST01/Anip/ANIP
+```
+
+Le format `/r1/{serviceId}/...` et le header `X-Road-Client` correspondent au protocole REST X-Road officiel, pas au format REST UXP 1.24 utilise par cette plateforme.
+
+Si le Security Server client est configure en `HTTPS`, il exige aussi un certificat TLS client de l'information system. Dans l'UI UXP du subsystem demandeur, ajouter `system-a-portal/certs/client-cert.pem` dans `Information Systems Internal TLS Certificates`. Le portail utilise la cle associee via `PORTAL_XROAD_TLS_KEY_PATH`.
+
 ## Pattern retenu
 
 Le pattern cible est:
@@ -197,7 +212,7 @@ En mode container X-Road, le portail execute ces etapes:
 1. Lire la procedure concours-bourses-master-2026 dans Evidence Broker
 2. Resoudre les preuves requises: identity-nationality, criminal-record, diploma-authenticity
 3. Resoudre les fournisseurs via Data Service Directory
-4. Appeler chaque fournisseur via /r1/{serviceId}/... avec X-Road-Client
+4. Appeler chaque fournisseur via `/restapi/{rest-api-path}` avec `Uxp-Client` et `Uxp-Service`
 5. Verifier les champs de reponse attendus via Semantic Repository
 6. Appliquer les regles de decision
 7. Produire la reponse finale pour l'inscription
@@ -227,21 +242,21 @@ sequenceDiagram
     Portal->>Portal: Lit Data Service Directory<br/>fournisseurs X-Road
     Portal->>Portal: Lit Semantic Repository<br/>champs attendus
 
-    Portal->>XRPortal: GET /r1/BJ/COM/CASE-TEST01/Anip/ANIP/api/v1/anip/personnes/{npi}<br/>X-Road-Client: BJ/COM/CASE-TEST01/Anip
+    Portal->>XRPortal: GET /restapi/api/v1/anip/personnes/{npi}<br/>Uxp-Client: BJ/COM/CASE-TEST01/Anip<br/>Uxp-Service: BJ/COM/CASE-TEST01/Anip/ANIP
     XRPortal->>XRAnip: Echange X-Road 1-to-1
     XRAnip->>ANIP: GET /api/v1/anip/personnes/{npi}
     ANIP-->>XRAnip: Identite + nationalite
     XRAnip-->>XRPortal: Evidence response
     XRPortal-->>Portal: Evidence identity-nationality
 
-    Portal->>XRPortal: GET /r1/BJ/GOV/CASE-TEST03/Mairie/JUSTICE/api/v1/justice/casier/{npi}
+    Portal->>XRPortal: GET /restapi/api/v1/justice/casier/{npi}<br/>Uxp-Service: BJ/GOV/CASE-TEST03/Mairie/JUSTICE
     XRPortal->>XRJustice: Echange X-Road 1-to-1
     XRJustice->>Justice: GET /api/v1/justice/casier/{npi}
     Justice-->>XRJustice: Statut casier
     XRJustice-->>XRPortal: Evidence response
     XRPortal-->>Portal: Evidence criminal-record
 
-    Portal->>XRPortal: POST /r1/BJ/GOV/CASE-TEST02/Dei/DGES/api/v1/dges/diplome/verifier
+    Portal->>XRPortal: POST /restapi/api/v1/dges/diplome/verifier<br/>Uxp-Service: BJ/GOV/CASE-TEST02/Dei/DGES
     XRPortal->>XRDges: Echange X-Road 1-to-1
     XRDges->>DGES: POST /api/v1/dges/diplome/verifier
     DGES-->>XRDges: Authenticite diplome
@@ -306,7 +321,7 @@ Pour passer a X-Road reel:
 3. Publier chaque API REST comme service X-Road avec son OpenAPI si disponible.
 4. Configurer les droits d'acces service par service.
 5. Supprimer `TRUST_XROAD=true` et faire confiance uniquement au canal local Security Server -> backend.
-6. Conserver le contrat applicatif cote demandeur: le portail appelle son Security Server avec `/r1/{serviceId}/...` et `X-Road-Client`. Les APIs providers ne codent pas les clients autorises; les ACL restent dans les Security Servers.
+6. Conserver le contrat applicatif cote demandeur: le portail appelle son Security Server UXP avec `/restapi/{rest-api-path}`, `Uxp-Client` et `Uxp-Service`. Les APIs providers ne codent pas les clients autorises; les ACL restent dans les Security Servers.
 
 Sources utiles:
 
@@ -425,8 +440,11 @@ Le script complet:
 Une fois ces etapes faites, les applications doivent pointer vers les Security Servers officiels. Les variables sont deja prevues dans le compose:
 
 ```yaml
-PORTAL_XROAD_BASE_URL=http://10.71.2.17
+PORTAL_XROAD_BASE_URL=https://10.71.2.17
 PORTAL_XROAD_CLIENT=BJ/COM/CASE-TEST01/Anip
+PORTAL_XROAD_PROTOCOL=uxp
+PORTAL_XROAD_TLS_CERT_PATH=/app/certs/client-cert.pem
+PORTAL_XROAD_TLS_KEY_PATH=/app/certs/client-key.pem
 ```
 
 Correction de l'erreur `configuration-anchor.xml`:

@@ -45,8 +45,9 @@ function sendLog(direction, method, p, status, detail) {
 }
 
 function certAuth(req, res, next) {
-  if (TRUST_XROAD && req.header('X-Road-Client')) {
-    req.clientCN = req.header('X-Road-Client');
+  const trustedClient = req.header('Uxp-Client') || req.header('X-Road-Client');
+  if (TRUST_XROAD && trustedClient) {
+    req.clientCN = trustedClient;
     return next();
   }
   if (req.path.startsWith('/admin') || req.path === '/' || req.path === '/favicon.ico') return next();

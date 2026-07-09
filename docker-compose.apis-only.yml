@@ -9,6 +9,9 @@ services:
       PORT: 3000
       XROAD_BASE_URL: ${PORTAL_XROAD_BASE_URL:-}
       XROAD_CLIENT: ${PORTAL_XROAD_CLIENT:-BJ/COM/CASE-TEST01/Anip}
+      XROAD_PROTOCOL: ${PORTAL_XROAD_PROTOCOL:-uxp}
+      XROAD_TLS_CERT_PATH: ${PORTAL_XROAD_TLS_CERT_PATH:-/app/certs/client-cert.pem}
+      XROAD_TLS_KEY_PATH: ${PORTAL_XROAD_TLS_KEY_PATH:-/app/certs/client-key.pem}
 
   system-b-anip:
     build:
