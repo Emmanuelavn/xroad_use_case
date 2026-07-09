@@ -54,46 +54,56 @@ Arret:
 npm run compose:apis:down
 ```
 
-URL locale unique:
+URLs locales:
 
 ```text
-http://localhost:38000
+Frontend portail: http://localhost:38080
+Gateway APIs:      http://localhost:38000
 ```
 
 Routes exposees:
 
 | API | URL hote | Backend interne |
 | --- | --- |
-| Portail | `http://localhost:38000/portal/...` | `system-a-portal:3000` |
-| ANIP | `http://localhost:38000/anip/...` | `system-b-anip:3001` |
-| Justice | `http://localhost:38000/justice/...` | `system-c-justice:3002` |
-| DGES | `http://localhost:38000/dges/...` | `system-d-dges:3003` |
+| Frontend portail | `http://localhost:38080/` | `system-a-portal:3000` |
+| API Portail | `http://localhost:38000/api/portal/...` | `system-a-portal:3000` |
+| API ANIP | `http://localhost:38000/api/anip/...` | `system-b-anip:3001` |
+| API Justice | `http://localhost:38000/api/justice/...` | `system-c-justice:3002` |
+| API DGES | `http://localhost:38000/api/dges/...` | `system-d-dges:3003` |
 
-Dans ce mode, les providers tournent en HTTP interne avec `TRUST_XROAD=true`; l'identite systeme reste portee par le header `X-Road-Client`, sans controle ACL dans l'API. L'objectif est de publier les APIs backend sur un seul domaine, puis de les ajouter comme REST APIs dans des Security Servers X-Road distants. Le portail est aussi expose par Nginx; pour tester un parcours complet via X-Road, configure `PORTAL_XROAD_BASE_URL` vers le Security Server client du portail.
+Dans ce mode, les providers tournent en HTTP interne avec `TRUST_XROAD=true`; l'identite systeme reste portee par le header `X-Road-Client`, sans controle ACL dans l'API. L'objectif est de publier les APIs backend sur un seul domaine, puis de les ajouter comme REST APIs dans des Security Servers X-Road distants. Le portail est expose a la racine via le Nginx frontend; pour tester un parcours complet via X-Road, configure `PORTAL_XROAD_BASE_URL` vers le Security Server client du portail.
+
+Sur le domaine cible `cra-case.asin.bj`, le routage attendu est:
+
+```text
+http://cra-case.asin.bj/       -> frontend portail
+http://cra-case.asin.bj/api/... -> APIs backend
+```
 
 URLs typiques a declarer dans les Security Servers distants:
 
 ```text
-http://<domaine>:38000/portal
-http://<domaine>:38000/anip
-http://<domaine>:38000/justice
-http://<domaine>:38000/dges
+http://<domaine>:38000/api/portal
+http://<domaine>:38000/api/anip
+http://<domaine>:38000/api/justice
+http://<domaine>:38000/api/dges
 ```
 
 Tests rapides:
 
 ```powershell
-curl.exe -sS "http://localhost:38000/health"
+curl.exe -sS "http://localhost:38080/health"
+curl.exe -sS "http://localhost:38000/api/health"
 
-curl.exe -sS "http://localhost:38000/portal/api/v1/inscriptions"
+curl.exe -sS "http://localhost:38080/api/portal/api/v1/inscriptions"
 
-curl.exe -sS "http://localhost:38000/anip/api/v1/anip/personnes/11111111111111" `
+curl.exe -sS "http://localhost:38000/api/anip/api/v1/anip/personnes/11111111111111" `
   -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS"
 
-curl.exe -sS "http://localhost:38000/justice/api/v1/justice/casier/11111111111111" `
+curl.exe -sS "http://localhost:38000/api/justice/api/v1/justice/casier/11111111111111" `
   -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS"
 
-curl.exe -sS -X POST "http://localhost:38000/dges/api/v1/dges/diplome/verifier" `
+curl.exe -sS -X POST "http://localhost:38000/api/dges/api/v1/dges/diplome/verifier" `
   -H "Content-Type: application/json" `
   -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS" `
   -d '{ "npi": "11111111111111", "numero_diplome": "DIP-LIC-2024-001" }'

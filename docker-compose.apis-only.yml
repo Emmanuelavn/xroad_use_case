@@ -51,3 +51,13 @@ services:
       - system-b-anip
       - system-c-justice
       - system-d-dges
+
+  frontend-nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "38080:38080"
+    volumes:
+      - ./nginx/frontend-portal.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - system-a-portal
+      - apis-nginx
