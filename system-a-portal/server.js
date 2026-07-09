@@ -11,7 +11,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const PORT = Number(process.env.PORT || 3000);
 const CERTS_DIR = path.join(__dirname, 'certs');
 const XROAD_BASE_URL = process.env.XROAD_BASE_URL;
-const XROAD_CLIENT = process.env.XROAD_CLIENT || 'BJ/GOV/PORTAL/CONCOURS';
+const XROAD_CLIENT = process.env.XROAD_CLIENT || 'BJ/COM/CASE-TEST01/Anip';
 const OOTS_DIR = path.join(__dirname, 'oots-lite');
 const evidenceBroker = JSON.parse(fs.readFileSync(path.join(OOTS_DIR, 'evidence-broker.json'), 'utf8'));
 const dataServiceDirectory = JSON.parse(fs.readFileSync(path.join(OOTS_DIR, 'data-service-directory.json'), 'utf8'));
@@ -224,12 +224,13 @@ function callANIP(npi, numero_diplome) {
 
 function fetchSecure(port, path) {
   if (XROAD_BASE_URL) {
-    const serviceByPort = {
-      3001: 'BJ/GOV/ANIP/REGISTRY/anip',
-      3002: 'BJ/GOV/JUSTICE/CASIER/justice',
-      3003: 'BJ/GOV/DGES/DIPLOMES/dges'
+    const evidenceTypeByPort = {
+      3001: 'identity-nationality',
+      3002: 'criminal-record',
+      3003: 'diploma-authenticity'
     };
-    const serviceId = serviceByPort[port];
+    const evidenceType = evidenceTypeByPort[port];
+    const serviceId = dataServiceDirectory.data_services[evidenceType]?.service_id;
     if (!serviceId) return Promise.resolve([]);
     return callJsonOverHttp('GET', `${XROAD_BASE_URL}/r1/${serviceId}${path}`, null, { 'X-Road-Client': XROAD_CLIENT })
       .then((response) => Array.isArray(response.body) ? response.body : []);

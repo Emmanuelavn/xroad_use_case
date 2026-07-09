@@ -71,7 +71,14 @@ Routes exposees:
 | API Justice | `http://localhost:38000/api/justice/...` | `system-c-justice:3002` |
 | API DGES | `http://localhost:38000/api/dges/...` | `system-d-dges:3003` |
 
-Dans ce mode, les providers tournent en HTTP interne avec `TRUST_XROAD=true`; l'identite systeme reste portee par le header `X-Road-Client`, sans controle ACL dans l'API. L'objectif est de publier les APIs backend sur un seul domaine, puis de les ajouter comme REST APIs dans des Security Servers X-Road distants. Le portail est expose a la racine via le Nginx frontend; pour tester un parcours complet via X-Road, configure `PORTAL_XROAD_BASE_URL` vers le Security Server client du portail.
+Dans ce mode, les providers tournent en HTTP interne avec `TRUST_XROAD=true`; l'identite systeme reste portee par le header `X-Road-Client`, sans controle ACL dans l'API. L'objectif est de publier les APIs backend sur un seul domaine, puis de les ajouter comme REST APIs dans des Security Servers X-Road distants. Le portail est expose a la racine via le Nginx frontend; pour tester un parcours complet via X-Road, configure `PORTAL_XROAD_BASE_URL` vers le Security Server client du portail et `PORTAL_XROAD_CLIENT` avec le subsystem demandeur.
+
+Variables utiles pour le portail demandeur:
+
+```env
+PORTAL_XROAD_BASE_URL=http://10.71.2.17
+PORTAL_XROAD_CLIENT=BJ/COM/CASE-TEST01/Anip
+```
 
 Sur le domaine cible `cra-case.asin.bj`, le routage attendu est:
 
@@ -98,14 +105,14 @@ curl.exe -sS "http://localhost:38000/api/health"
 curl.exe -sS "http://localhost:38080/api/portal/api/v1/inscriptions"
 
 curl.exe -sS "http://localhost:38000/api/anip/api/v1/anip/personnes/11111111111111" `
-  -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS"
+  -H "X-Road-Client: BJ/COM/CASE-TEST01/Anip"
 
 curl.exe -sS "http://localhost:38000/api/justice/api/v1/justice/casier/11111111111111" `
-  -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS"
+  -H "X-Road-Client: BJ/COM/CASE-TEST01/Anip"
 
 curl.exe -sS -X POST "http://localhost:38000/api/dges/api/v1/dges/diplome/verifier" `
   -H "Content-Type: application/json" `
-  -H "X-Road-Client: BJ/GOV/PORTAL/CONCOURS" `
+  -H "X-Road-Client: BJ/COM/CASE-TEST01/Anip" `
   -d '{ "npi": "11111111111111", "numero_diplome": "DIP-LIC-2024-001" }'
 ```
 
@@ -155,13 +162,11 @@ Le proxy valide les ACL dans `xroad-proxy/config.json`, transmet les headers `X-
 
 | Client | Service autorise |
 | --- | --- |
-| `BJ/GOV/PORTAL/CONCOURS` | `BJ/GOV/ANIP/REGISTRY/anip` |
-| `BJ/GOV/PORTAL/CONCOURS` | `BJ/GOV/JUSTICE/CASIER/justice` |
-| `BJ/GOV/PORTAL/CONCOURS` | `BJ/GOV/DGES/DIPLOMES/dges` |
-| `BJ/GOV/ANIP/REGISTRY` | `BJ/GOV/JUSTICE/CASIER/justice` |
-| `BJ/GOV/ANIP/REGISTRY` | `BJ/GOV/DGES/DIPLOMES/dges` |
+| `BJ/COM/CASE-TEST01/Anip` | `BJ/COM/CASE-TEST01/Anip/ANIP` |
+| `BJ/COM/CASE-TEST01/Anip` | `BJ/GOV/CASE-TEST03/Mairie/JUSTICE` |
+| `BJ/COM/CASE-TEST01/Anip` | `BJ/GOV/CASE-TEST02/Dei/DGES` |
 
-Dans le design OOTS-lite retenu, le portail est l'Evidence Requester de la procedure concours. Il a donc les droits d'appel vers les trois fournisseurs de preuves. ANIP garde aussi ses droits vers Justice et DGES pour conserver le mode historique local et comparer les deux patterns.
+Dans le design OOTS-lite retenu, le portail est l'Evidence Requester de la procedure concours. Il a donc les droits d'appel vers les trois fournisseurs de preuves. ANIP n'agrege pas Justice et DGES dans ce mode simplifie.
 
 ## Pattern retenu
 
@@ -209,12 +214,12 @@ sequenceDiagram
     autonumber
     actor Candidat
     participant Portal as Portail concours<br/>OPP + Evidence Requester
-    participant XRPortal as Security Server<br/>PORTAL/CONCOURS
-    participant XRAnip as Security Server<br/>ANIP/REGISTRY
+    participant XRPortal as Security Server<br/>CASE-TEST01/Anip
+    participant XRAnip as Security Server<br/>CASE-TEST01/Anip
     participant ANIP as ANIP<br/>Data Service
-    participant XRJustice as Security Server<br/>JUSTICE/CASIER
+    participant XRJustice as Security Server<br/>CASE-TEST03/Mairie
     participant Justice as Justice<br/>Data Service
-    participant XRDges as Security Server<br/>DGES/DIPLOMES
+    participant XRDges as Security Server<br/>CASE-TEST02/Dei
     participant DGES as DGES<br/>Data Service
 
     Candidat->>Portal: Saisit NPI + numero_diplome
@@ -222,21 +227,21 @@ sequenceDiagram
     Portal->>Portal: Lit Data Service Directory<br/>fournisseurs X-Road
     Portal->>Portal: Lit Semantic Repository<br/>champs attendus
 
-    Portal->>XRPortal: GET /r1/BJ/GOV/ANIP/REGISTRY/anip/api/v1/anip/personnes/{npi}<br/>X-Road-Client: BJ/GOV/PORTAL/CONCOURS
+    Portal->>XRPortal: GET /r1/BJ/COM/CASE-TEST01/Anip/ANIP/api/v1/anip/personnes/{npi}<br/>X-Road-Client: BJ/COM/CASE-TEST01/Anip
     XRPortal->>XRAnip: Echange X-Road 1-to-1
     XRAnip->>ANIP: GET /api/v1/anip/personnes/{npi}
     ANIP-->>XRAnip: Identite + nationalite
     XRAnip-->>XRPortal: Evidence response
     XRPortal-->>Portal: Evidence identity-nationality
 
-    Portal->>XRPortal: GET /r1/BJ/GOV/JUSTICE/CASIER/justice/api/v1/justice/casier/{npi}
+    Portal->>XRPortal: GET /r1/BJ/GOV/CASE-TEST03/Mairie/JUSTICE/api/v1/justice/casier/{npi}
     XRPortal->>XRJustice: Echange X-Road 1-to-1
     XRJustice->>Justice: GET /api/v1/justice/casier/{npi}
     Justice-->>XRJustice: Statut casier
     XRJustice-->>XRPortal: Evidence response
     XRPortal-->>Portal: Evidence criminal-record
 
-    Portal->>XRPortal: POST /r1/BJ/GOV/DGES/DIPLOMES/dges/api/v1/dges/diplome/verifier
+    Portal->>XRPortal: POST /r1/BJ/GOV/CASE-TEST02/Dei/DGES/api/v1/dges/diplome/verifier
     XRPortal->>XRDges: Echange X-Road 1-to-1
     XRDges->>DGES: POST /api/v1/dges/diplome/verifier
     DGES-->>XRDges: Authenticite diplome
@@ -301,7 +306,7 @@ Pour passer a X-Road reel:
 3. Publier chaque API REST comme service X-Road avec son OpenAPI si disponible.
 4. Configurer les droits d'acces service par service.
 5. Supprimer `TRUST_XROAD=true` et faire confiance uniquement au canal local Security Server -> backend.
-6. Conserver le contrat applicatif: les applications appellent `/r1/{serviceId}/...` avec `X-Road-Client`.
+6. Conserver le contrat applicatif cote demandeur: le portail appelle son Security Server avec `/r1/{serviceId}/...` et `X-Road-Client`. Les APIs providers ne codent pas les clients autorises; les ACL restent dans les Security Servers.
 
 Sources utiles:
 
@@ -420,8 +425,8 @@ Le script complet:
 Une fois ces etapes faites, les applications doivent pointer vers les Security Servers officiels. Les variables sont deja prevues dans le compose:
 
 ```yaml
-PORTAL_XROAD_BASE_URL=http://xroad-portal-ss:8080
-ANIP_XROAD_BASE_URL=http://xroad-anip-ss:8080
+PORTAL_XROAD_BASE_URL=http://10.71.2.17
+PORTAL_XROAD_CLIENT=BJ/COM/CASE-TEST01/Anip
 ```
 
 Correction de l'erreur `configuration-anchor.xml`:

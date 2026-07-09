@@ -16,10 +16,6 @@ const LOG_PORT = Number(process.env.LOG_PORT || 3000);
 const LOG_DISABLED = process.env.LOG_DISABLED === 'true';
 const TRUST_XROAD = process.env.TRUST_XROAD === 'true';
 const HTTP_ONLY = process.env.HTTP_ONLY === 'true';
-const XROAD_BASE_URL = process.env.XROAD_BASE_URL;
-const XROAD_CLIENT = process.env.XROAD_CLIENT || 'BJ/GOV/ANIP/REGISTRY';
-const JUSTICE_BASE_URL = process.env.JUSTICE_BASE_URL;
-const DGES_BASE_URL = process.env.DGES_BASE_URL;
 
 const serverCert = fs.readFileSync(path.join(CERTS_DIR, 'server-cert.pem'));
 const serverKey = fs.readFileSync(path.join(CERTS_DIR, 'server-key.pem'));
@@ -69,58 +65,9 @@ function certAuth(req, res, next) {
   next();
 }
 
-function callServiceXRoad(method, serviceId, restPath, body) {
-  const target = `${XROAD_BASE_URL}/r1/${serviceId}${restPath}`;
-  return callServiceHTTP(method, target, body, { 'X-Road-Client': XROAD_CLIENT });
-}
-
-function callServiceHTTP(method, url, body, headers = {}) {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    const transport = urlObj.protocol === 'https:' ? https : http;
-    const postData = body ? JSON.stringify(body) : null;
-    sendLog('OUT', method, urlObj.pathname, '-', `Via X-Road ${XROAD_CLIENT}`);
-    const options = {
-      hostname: urlObj.hostname,
-      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
-      path: `${urlObj.pathname}${urlObj.search}`,
-      method,
-      rejectUnauthorized: false,
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...headers,
-        ...(postData ? { 'Content-Length': Buffer.byteLength(postData) } : {})
-      }
-    };
-    const req = transport.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        sendLog('IN', method, urlObj.pathname, res.statusCode, `${res.statusCode === 200 ? 'OK' : 'FAIL'} — X-Road`);
-        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
-        catch (e) { resolve({ status: res.statusCode, body: data }); }
-      });
-    });
-    req.on('error', (e) => { sendLog('ERROR', method, urlObj.pathname, '-', e.message); reject(e); });
-    if (postData) req.write(postData);
-    req.end();
-  });
-}
-
 // HTTPS call with client certificate
 function callServiceHTTPS(method, url, body) {
   const urlObj = new URL(url);
-  if (JUSTICE_BASE_URL && urlObj.port === '3002') {
-    return callServiceHTTP(method, `${JUSTICE_BASE_URL}${urlObj.pathname}`, body, { 'X-Road-Client': XROAD_CLIENT });
-  }
-  if (DGES_BASE_URL && urlObj.port === '3003') {
-    return callServiceHTTP(method, `${DGES_BASE_URL}${urlObj.pathname}`, body, { 'X-Road-Client': XROAD_CLIENT });
-  }
-  if (XROAD_BASE_URL) {
-    if (urlObj.port === '3002') return callServiceXRoad(method, 'BJ/GOV/JUSTICE/CASIER/justice', urlObj.pathname, body);
-    if (urlObj.port === '3003') return callServiceXRoad(method, 'BJ/GOV/DGES/DIPLOMES/dges', urlObj.pathname, body);
-  }
   return new Promise((resolve, reject) => {
     const postData = body ? JSON.stringify(body) : null;
     sendLog('OUT', method, urlObj.pathname, '-', `Vers ${urlObj.hostname}:${urlObj.port} (certificat client ANIP-Registry)`);

@@ -8,7 +8,7 @@ services:
     environment:
       PORT: 3000
       XROAD_BASE_URL: ${PORTAL_XROAD_BASE_URL:-}
-      XROAD_CLIENT: ${PORTAL_XROAD_CLIENT:-BJ/GOV/PORTAL/CONCOURS}
+      XROAD_CLIENT: ${PORTAL_XROAD_CLIENT:-BJ/COM/CASE-TEST01/Anip}
 
   system-b-anip:
     build:
