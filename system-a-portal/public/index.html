@@ -620,8 +620,10 @@
     });
 
     function showPayment(candidat) {
-      document.getElementById('pay-nom').textContent = candidat.prenoms + ' ' + candidat.nom;
-      document.getElementById('pay-npi').textContent = candidat.npi;
+      candidat = candidat || {};
+      const nomComplet = candidat.prenoms && candidat.nom ? candidat.prenoms + ' ' + candidat.nom : (candidat.nom_complet || 'Dossier existant');
+      document.getElementById('pay-nom').textContent = nomComplet;
+      document.getElementById('pay-npi').textContent = candidat.npi || currentNpi;
       document.getElementById('payment-card').style.display = 'block';
       document.getElementById('pay-result').className = 'result'; document.getElementById('pay-result').style.display = 'none';
     }

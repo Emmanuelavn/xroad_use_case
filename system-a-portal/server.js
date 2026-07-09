@@ -283,9 +283,9 @@ app.post('/api/v1/concours/inscrire', async (req, res) => {
     const paiement = paiements.find(p => p.npi === npi);
     if (paiement) {
       const convoc = convocations.find(c => c.npi === npi);
-      return res.status(200).json({ succes: true, deja_inscrit: true, paiement_valide: true, convocation: convoc || null });
+      return res.status(200).json({ succes: true, deja_inscrit: true, paiement_valide: true, candidat: { npi, nom_complet: exist.nom_complet }, convocation: convoc || null });
     }
-    return res.status(200).json({ succes: true, deja_inscrit: true, paiement_valide: false, motif: 'Inscription existe, paiement en attente' });
+    return res.status(200).json({ succes: true, deja_inscrit: true, paiement_valide: false, candidat: { npi, nom_complet: exist.nom_complet }, motif: 'Inscription existe, paiement en attente' });
   }
 
   let anipResponse;
