@@ -33,13 +33,36 @@ else { fs.writeFileSync(DB_FILE, JSON.stringify(DEFAULT_DATA, null, 2)); diplome
 function save() { fs.writeFileSync(DB_FILE, JSON.stringify(diplomes, null, 2)); }
 
 function sendLog(direction, method, p, status, detail) {
+  const entry = { source: 'D-DGES', direction, method, path: p, status, detail, time: new Date().toISOString() };
+  console.log(`[FLOW] ${JSON.stringify(entry)}`);
   if (LOG_DISABLED) return;
-  const data = JSON.stringify({ source: 'D-DGES', direction, method, path: p, status, detail, time: new Date().toISOString() });
+  const data = JSON.stringify(entry);
   try {
     const req = https.request({ hostname: LOG_HOST, port: LOG_PORT, path: '/api/logs/push', method: 'POST', ca: caCert, rejectUnauthorized: false, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => { res.resume(); });
     req.on('error', (e) => { console.error(`[DGES] sendLog ERROR: ${e.message}`); }); req.write(data); req.end();
   } catch(e) { console.error(`[DGES] sendLog EXCEPTION: ${e.message}`); }
 }
+
+function logXroadExchange(req, res, next) {
+  const startedAt = Date.now();
+  const context = {
+    method: req.method,
+    path: req.originalUrl,
+    client: req.header('Uxp-Client') || req.header('X-Road-Client'),
+    service: req.header('Uxp-Service'),
+    query_id: req.header('Uxp-Queryid'),
+    body: req.body
+  };
+  console.log(`[XROAD][DGES][IN] ${JSON.stringify({ time: new Date().toISOString(), ...context })}`);
+  const sendJson = res.json.bind(res);
+  res.json = (body) => {
+    console.log(`[XROAD][DGES][OUT] ${JSON.stringify({ time: new Date().toISOString(), ...context, status: res.statusCode, duration_ms: Date.now() - startedAt, body })}`);
+    return sendJson(body);
+  };
+  next();
+}
+
+app.use('/api/v1/dges', logXroadExchange);
 
 // Certificate auth — only for inter-system endpoint
 function certAuth(req, res, next) {

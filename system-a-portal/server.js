@@ -40,9 +40,24 @@ let logId = 1;
 
 function addLog(source, direction, method, path, status, detail) {
   const entry = { id: logId++, source, direction, method, path, status, detail, time: new Date().toISOString() };
+  console.log(`[FLOW] ${JSON.stringify(entry)}`);
   logs.push(entry);
   if (logs.length > 200) logs.shift();
   logClients.forEach(res => res.write(`data: ${JSON.stringify(entry)}\n\n`));
+}
+
+function printable(value) {
+  if (value === undefined) return undefined;
+  const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+  return serialized.length > 4000 ? `${serialized.slice(0, 4000)}...[truncated]` : serialized;
+}
+
+function xroadLog(direction, details) {
+  console.log(`[XROAD][PORTAL][${direction}] ${JSON.stringify({
+    time: new Date().toISOString(),
+    ...details,
+    body: printable(details.body)
+  })}`);
 }
 
 app.post('/api/logs/push', (req, res) => {
@@ -67,6 +82,7 @@ app.get('/api/logs/stream', (req, res) => {
 
 function callJsonOverHttp(method, targetUrl, body, headers = {}) {
   return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
     const urlObj = new URL(targetUrl);
     const transport = urlObj.protocol === 'https:' ? https : http;
     const postData = body ? JSON.stringify(body) : null;
@@ -84,15 +100,41 @@ function callJsonOverHttp(method, targetUrl, body, headers = {}) {
         ...(postData ? { 'Content-Length': Buffer.byteLength(postData) } : {})
       }
     };
+    xroadLog('OUT', {
+      method,
+      target: targetUrl,
+      client: headers['Uxp-Client'] || headers['X-Road-Client'],
+      service: headers['Uxp-Service'],
+      body
+    });
     const req = transport.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => {
+        xroadLog('IN', {
+          method,
+          target: targetUrl,
+          status: res.statusCode,
+          duration_ms: Date.now() - startedAt,
+          transaction_id: res.headers['uxp-transaction-id'] || res.headers['x-road-id'],
+          fault_code: res.headers['uxp-faultcode'],
+          fault_string: res.headers['uxp-faultstring'],
+          body: data
+        });
         try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
         catch (e) { resolve({ status: res.statusCode, body: data }); }
       });
     });
-    req.on('error', reject);
+    req.on('error', (error) => {
+      xroadLog('ERROR', {
+        method,
+        target: targetUrl,
+        duration_ms: Date.now() - startedAt,
+        code: error.code,
+        message: error.message
+      });
+      reject(error);
+    });
     if (postData) req.write(postData);
     req.end();
   });
