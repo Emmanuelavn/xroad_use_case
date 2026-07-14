@@ -45,12 +45,17 @@ function sendLog(direction, method, p, status, detail) {
 
 function logXroadExchange(req, res, next) {
   const startedAt = Date.now();
+  const forwardedFor = req.header('X-Forwarded-For');
+  const origin = forwardedFor?.split(',')[0].trim()
+    || req.header('X-Real-IP')
+    || req.socket.remoteAddress
+    || 'unknown';
   const context = {
+    origin,
+    caller: req.header('Uxp-Client') || req.header('X-Road-Client') || 'DIRECT_API',
     method: req.method,
     path: req.originalUrl,
-    client: req.header('Uxp-Client') || req.header('X-Road-Client'),
-    service: req.header('Uxp-Service'),
-    query_id: req.header('Uxp-Queryid'),
+    headers: req.headers,
     body: req.body
   };
   console.log(`[XROAD][DGES][IN] ${JSON.stringify({ time: new Date().toISOString(), ...context })}`);
@@ -71,7 +76,9 @@ function certAuth(req, res, next) {
     req.clientCN = trustedClient;
     return next();
   }
-  const cert = req.socket.getPeerCertificate();
+  const cert = typeof req.socket.getPeerCertificate === 'function'
+    ? req.socket.getPeerCertificate()
+    : null;
   if (!cert || !cert.subject) {
     sendLog('REJECT', req.method, req.path, 401, 'Aucun certificat client');
     return res.status(401).json({ error: 'Certificat client requis', code: 'CERT_REQUIRED' });

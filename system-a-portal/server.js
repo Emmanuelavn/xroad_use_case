@@ -60,6 +60,27 @@ function xroadLog(direction, details) {
   })}`);
 }
 
+function logApiCaller(req, res, next) {
+  const forwardedFor = req.header('X-Forwarded-For');
+  const origin = forwardedFor?.split(',')[0].trim()
+    || req.header('X-Real-IP')
+    || req.socket.remoteAddress
+    || 'unknown';
+  const caller = req.header('Uxp-Client') || req.header('X-Road-Client') || 'DIRECT_API';
+  console.log(`[API][PORTAL][IN] ${JSON.stringify({
+    time: new Date().toISOString(),
+    origin,
+    caller,
+    method: req.method,
+    path: req.originalUrl,
+    headers: req.headers,
+    body: req.body
+  })}`);
+  next();
+}
+
+app.use('/api/v1', logApiCaller);
+
 app.post('/api/logs/push', (req, res) => {
   const entry = { id: logId++, ...req.body };
   logs.push(entry);
