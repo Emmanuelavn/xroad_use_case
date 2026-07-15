@@ -21,6 +21,7 @@ services:
       PORT: 3001
       HTTP_ONLY: "true"
       TRUST_XROAD: "true"
+      ALLOW_DIRECT_API: "true"
       LOG_DISABLED: "true"
 
   system-c-justice:
@@ -31,6 +32,7 @@ services:
       PORT: 3002
       HTTP_ONLY: "true"
       TRUST_XROAD: "true"
+      ALLOW_DIRECT_API: "true"
       LOG_DISABLED: "true"
 
   system-d-dges:
@@ -41,6 +43,7 @@ services:
       PORT: 3003
       HTTP_ONLY: "true"
       TRUST_XROAD: "true"
+      ALLOW_DIRECT_API: "true"
       LOG_DISABLED: "true"
 
   apis-nginx:

@@ -15,6 +15,7 @@ const LOG_HOST = process.env.LOG_HOST || 'localhost';
 const LOG_PORT = Number(process.env.LOG_PORT || 3000);
 const LOG_DISABLED = process.env.LOG_DISABLED === 'true';
 const TRUST_XROAD = process.env.TRUST_XROAD === 'true';
+const ALLOW_DIRECT_API = process.env.ALLOW_DIRECT_API === 'true';
 const HTTP_ONLY = process.env.HTTP_ONLY === 'true';
 
 const serverCert = fs.readFileSync(path.join(CERTS_DIR, 'server-cert.pem'));
@@ -50,6 +51,10 @@ function certAuth(req, res, next) {
   const trustedClient = req.header('Uxp-Client') || req.header('X-Road-Client');
   if (TRUST_XROAD && trustedClient) {
     req.clientCN = trustedClient;
+    return next();
+  }
+  if (ALLOW_DIRECT_API) {
+    req.clientCN = 'DIRECT_API';
     return next();
   }
   if (req.path.startsWith('/admin') || req.path === '/' || req.path === '/favicon.ico') return next();
